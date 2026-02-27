@@ -1,0 +1,2321 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#0D1F3C"/>
+<meta name="description" content="CITRO-Formularios: Sistema de Gestión de Trámites"/>
+<title>CITRO — Sistema de Trámites v3</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+:root{
+  --navy:#0D1F3C; --navy2:#16325A; --teal:#0A7A6E; --teal2:#0DB8A8;
+  --amber:#E8920A; --amber2:#FFC542; --red:#C0392B; --green:#1A7A4A;
+  --blue:#1B5FA8; --purple:#5B2F8A; --orange:#B85C0A;
+  --white:#fff; --surf:#F2F5FA; --surf2:#E8EDF5; --border:#C8D4E8;
+  --text:#162040; --muted:#5A6880; --light:#8A9AB8;
+  --r:8px; --r2:12px;
+  --sh:0 2px 12px rgba(13,31,60,.09);
+  --sh2:0 4px 24px rgba(13,31,60,.14);
+  --sidebar:224px; --header:56px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px;height:100%}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--surf);color:var(--text);height:100%;display:flex;overflow:hidden}
+
+/* ── LOGIN OVERLAY ── */
+.login-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 55%,#1A3A6E 100%);
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .4s;
+}
+.login-overlay.hide{opacity:0;pointer-events:none}
+.login-box{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:48px 44px;text-align:center;
+  backdrop-filter:blur(20px);max-width:420px;width:90%;
+  box-shadow:0 32px 80px rgba(0,0,0,.4);
+}
+.login-emblem{
+  width:64px;height:64px;background:var(--amber);border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;font-weight:700;color:var(--navy);
+  margin:0 auto 20px;box-shadow:0 0 0 6px rgba(232,146,10,.2);
+}
+.login-box h2{font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:6px}
+.login-box p{font-size:.85rem;color:rgba(255,255,255,.5);margin-bottom:28px;line-height:1.6}
+.login-divider{
+  display:flex;align-items:center;gap:10px;margin:20px 0;
+  color:rgba(255,255,255,.3);font-size:.75rem;
+}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1)}
+.login-note{font-size:.72rem;color:rgba(255,255,255,.3);margin-top:20px;line-height:1.6}
+#google-btn-wrap{display:flex;justify-content:center}
+.login-error{
+  background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);
+  color:#FFA0A0;border-radius:8px;padding:10px 14px;
+  font-size:.78rem;margin-top:12px;display:none;
+}
+
+/* ── USER CHIP (topbar) ── */
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(10,122,110,.1);border:1px solid rgba(10,122,110,.2);
+  border-radius:20px;padding:4px 12px 4px 6px;cursor:pointer;
+  transition:all .15s;
+}
+.user-chip:hover{background:rgba(10,122,110,.18)}
+.user-avatar{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--teal);color:#fff;font-size:.75rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.user-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.user-name{font-size:.75rem;font-weight:600;color:var(--text);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-badge{
+  font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--amber);color:var(--navy);padding:1px 5px;border-radius:3px;
+}
+
+/* ── SYNC STATUS ── */
+.sync-indicator{
+  display:flex;align-items:center;gap:6px;
+  font-size:.72rem;padding:4px 10px;border-radius:5px;
+  background:var(--surf);border:1px solid var(--border);
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.pending{background:var(--amber);animation:blink 1.4s infinite}
+.sync-dot.error{background:var(--red)}
+.sync-dot.off{background:var(--border)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);min-width:var(--sidebar);background:var(--navy);
+  display:flex;flex-direction:column;height:100vh;overflow:hidden;
+  box-shadow:2px 0 20px rgba(0,0,0,.25);z-index:10;
+}
+.sb-brand{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-emblem{width:36px;height:36px;background:var(--amber);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:8px;box-shadow:0 0 0 3px rgba(232,146,10,.22)}
+.sb-title{font-size:.85rem;font-weight:700;color:#fff}
+.sb-sub{font-size:.68rem;color:rgba(255,255,255,.42);margin-top:2px}
+.sb-section{padding:16px 0 4px 16px;font-size:.62rem;font-weight:700;color:rgba(255,255,255,.28);letter-spacing:.1em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;color:rgba(255,255,255,.55);font-size:.83rem;font-weight:500;transition:all .15s;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.9)}
+.nav-item.active{background:rgba(10,122,110,.2);border-left-color:var(--teal2);color:#fff}
+.nav-item.admin-only{display:none}
+.nav-item.admin-only.show{display:flex}
+.nav-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--amber);color:var(--navy);font-size:.62rem;font-weight:700;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center}
+.sb-divider{height:1px;background:rgba(255,255,255,.07);margin:8px 0}
+.sb-footer{margin-top:auto;padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);font-size:.72rem;color:rgba(255,255,255,.28);line-height:1.5}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{height:var(--header);min-height:var(--header);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 20px;box-shadow:0 1px 4px rgba(13,31,60,.06);z-index:5}
+.topbar-title{font-size:1rem;font-weight:600;color:var(--text);flex:1}
+.topbar-sub{font-size:.75rem;color:var(--muted);margin-left:8px;font-weight:400}
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.content{flex:1;overflow-y:auto;padding:20px;scroll-behavior:smooth}
+.screen{display:none;animation:fadeIn .2s ease}
+.screen.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ── RESPONSIVE DESIGN ── */
+/* MOBILE FIRST APPROACH */
+@media(max-width:768px){
+  :root{--sidebar:0px;--header:48px;}
+  .sidebar{position:fixed;left:0;top:0;width:224px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .main{width:100%;margin-left:0}
+  .content{padding:12px;font-size:.9rem}
+  .topbar{padding:0 12px;height:48px}
+  .topbar-title{font-size:.9rem}
+  .topbar-right{gap:4px}
+  .card{margin-bottom:12px;padding:12px}
+  .card-header{padding:10px;font-size:.9rem}
+  .card-body{padding:12px}
+  .g2,.g3{grid-template-columns:1fr!important}
+  .fields{gap:10px}
+  .field{margin-bottom:10px}
+  input,select,textarea{padding:8px;font-size:1rem}
+  .btn{padding:10px;font-size:.9rem}
+  .user-chip{display:none}
+  .sync-indicator{font-size:.65rem}
+  table{font-size:.75rem}
+  .page-header{padding:12px 0;margin-bottom:12px}
+  .page-header h2{font-size:1.2rem}
+  .tema-card{grid-template-columns:1fr!important}
+}
+
+/* TABLET */
+@media(min-width:769px) and (max-width:1024px){
+  :root{--sidebar:180px;}
+  .content{padding:16px}
+  .g3{grid-template-columns:repeat(2,1fr)}
+  .topbar-title{font-size:.95rem}
+}
+
+/* DESKTOP OPTIMIZADO */
+@media(min-width:1025px){
+  :root{--sidebar:224px;}
+  .content{padding:20px;max-width:1400px;margin:0 auto}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card{box-shadow:var(--sh2)}
+  .topbar{padding:0 24px}
+  .user-chip{display:flex}
+}
+
+/* OPTIMIZACIONES ADICIONALES */
+@media(max-width:480px){
+  html{font-size:12px}
+  .sidebar{width:100%}
+  .topbar-title{font-size:.8rem}
+  .topbar-sub{display:none}
+  .nav-badge{font-size:.5rem;padding:0 3px}
+  .card-header{flex-direction:column;align-items:flex-start}
+  .card-header span{font-size:1.2rem;margin-bottom:4px}
+}
+
+/* TOUCH OPTIMIZATIONS */
+@media(hover:none){
+  .btn{padding:12px 16px}
+  input,select,textarea{min-height:44px}
+  .nav-item{padding:12px 16px}
+}
+
+/* DARK MODE PARA MÓVIL */
+@media(prefers-color-scheme:dark){
+  body{background:#1a1a1a;color:#f0f0f0}
+  .login-box{background:rgba(0,0,0,.3)}
+  .card{background:#2a2a2a;border-color:#444}
+  input,select,textarea{background:#333;color:#f0f0f0;border-color:#555}
+}
+
+/* ── COMPONENTS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--white);border-radius:var(--r2);padding:16px;box-shadow:var(--sh);border-top:3px solid var(--border);display:flex;flex-direction:column;gap:4px;transition:all .15s}
+.stat-card:hover{box-shadow:var(--sh2);transform:translateY(-1px)}
+.stat-card.c-teal{border-top-color:var(--teal)}.stat-card.c-amber{border-top-color:var(--amber)}
+.stat-card.c-green{border-top-color:var(--green)}.stat-card.c-blue{border-top-color:var(--blue)}
+.stat-num{font-size:2rem;font-weight:700;color:var(--text);line-height:1;font-family:'IBM Plex Mono',monospace}
+.stat-lbl{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.stat-trend{font-size:.72rem;color:var(--muted);margin-top:2px}
+.card{background:var(--white);border-radius:var(--r2);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--surf2);display:flex;align-items:center;gap:8px}
+.card-header h3{font-size:.88rem;font-weight:600;color:var(--text)}
+.card-header .spacer{flex:1}
+.card-body{padding:18px}.card-body.p0{padding:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.form-wrap{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.form-main{display:flex;flex-direction:column;gap:14px}
+.form-sidebar-col{display:flex;flex-direction:column;gap:12px;position:sticky;top:0}
+.section-block{background:var(--white);border-radius:var(--r2);box-shadow:var(--sh);overflow:hidden}
+.section-head{padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--surf2);background:var(--surf)}
+.section-tag{font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--white);background:var(--teal);padding:2px 7px;border-radius:4px}
+.section-head h4{font-size:.82rem;font-weight:600;color:var(--text)}
+.section-body{padding:16px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.full{grid-column:1/-1}.field.col2{grid-column:span 2}
+label{font-size:.75rem;font-weight:600;color:var(--text)}
+label .req{color:var(--red);margin-left:2px}
+label .hint-tag{font-size:.62rem;font-weight:600;color:var(--teal);background:rgba(10,122,110,.1);padding:1px 5px;border-radius:3px;margin-left:4px;font-family:'IBM Plex Mono',monospace}
+input[type=text],input[type=email],input[type=number],input[type=date],select,textarea{
+  border:1.5px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:.82rem;
+  font-family:'IBM Plex Sans',sans-serif;color:var(--text);background:var(--white);
+  transition:border-color .15s,box-shadow .15s;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,122,110,.1)}
+input.err,select.err,textarea.err{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(192,57,43,.1)!important}
+textarea{resize:vertical;min-height:72px}
+.field-hint{font-size:.68rem;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r);border:none;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--teal);color:#fff;box-shadow:0 2px 8px rgba(10,122,110,.28)}
+.btn-primary:hover{background:#0A9080;transform:translateY(-1px)}
+.btn-primary:disabled{background:#aaa;box-shadow:none;transform:none;cursor:not-allowed}
+.btn-secondary{background:var(--surf);color:var(--text);border:1.5px solid var(--border)}
+.btn-secondary:hover{background:var(--surf2);border-color:var(--teal);color:var(--teal)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#A02020}
+.btn-ghost{background:none;color:var(--muted);border:1.5px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:.72rem}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.03em;text-transform:uppercase}
+.badge-pending{background:#FFF3CD;color:#7A4F00}.badge-done{background:#D4EDDA;color:#155724}
+.badge-new{background:#D6EAF8;color:#1A4F7A}.badge-review{background:#EDE0FF;color:#5B2F8A}
+.badge-canceled{background:#FDECEA;color:#922B21}
+.folio-display{background:var(--navy);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.folio-code{font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:500;color:var(--amber2);letter-spacing:.06em}
+.folio-label{font-size:.68rem;color:rgba(255,255,255,.4);margin-left:auto}
+.alert{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:var(--r);font-size:.8rem;border-left:3px solid;margin-top:8px;display:none}
+.alert.show{display:flex}
+.alert-success{background:#D4EDDA;border-color:var(--green);color:#155724}
+.alert-error{background:#FDECEA;border-color:var(--red);color:#922B21}
+.alert-info{background:#D6EAF8;border-color:var(--blue);color:#1A4F7A}
+.alert-warning{background:#FFF3CD;border-color:var(--amber);color:#7A4F00}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--navy);color:#fff;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:10px 12px;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--surf2);transition:background .1s}
+tbody tr:hover{background:var(--surf)}
+tbody td{padding:9px 12px;font-size:.8rem;vertical-align:middle}
+.empty-state{text-align:center;padding:40px;color:var(--muted);font-size:.85rem}
+.empty-state .es-icon{font-size:2.5rem;margin-bottom:8px;opacity:.4}
+.info-card{background:var(--white);border-radius:var(--r2);box-shadow:var(--sh);overflow:hidden}
+.info-card-head{padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--surf2)}
+.info-card-head .ico{font-size:1.1rem}
+.info-card-head h5{font-size:.78rem;font-weight:700;color:var(--text)}
+.info-card-body{padding:12px 14px;font-size:.75rem;color:var(--muted);line-height:1.6}
+.info-card-body strong{color:var(--text);display:block;margin-bottom:2px}
+.info-card-body code{font-family:'IBM Plex Mono',monospace;font-size:.7rem;background:var(--surf2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:12px;padding:8px 0;border-left:2px solid var(--surf2);margin-left:8px;padding-left:14px;position:relative}
+.tl-item::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;border-radius:50%;background:var(--teal);border:2px solid var(--white)}
+.tl-item.new::before{background:var(--amber)}.tl-item.done::before{background:var(--green)}
+.tl-item.cloud::before{background:var(--blue)}
+.tl-time{font-size:.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;width:76px;flex-shrink:0;padding-top:2px}
+.tl-text{font-size:.78rem;color:var(--text);line-height:1.5}
+.tl-text strong{color:var(--navy);font-weight:600}
+.form-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.form-tab{display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:var(--r);border:1.5px solid var(--border);background:var(--white);cursor:pointer;transition:all .15s;font-size:.78rem;font-weight:600;color:var(--muted);box-shadow:var(--sh)}
+.form-tab:hover{border-color:var(--teal);color:var(--teal)}
+.form-tab.active{border-color:var(--teal);background:rgba(10,122,110,.06);color:var(--teal);box-shadow:0 0 0 2px rgba(10,122,110,.12)}
+.tab-code{font-family:'IBM Plex Mono',monospace;font-size:.62rem;background:var(--surf2);padding:1px 5px;border-radius:3px;color:var(--muted)}
+.form-tab.active .tab-code{background:rgba(10,122,110,.15);color:var(--teal)}
+.form-header-strip{padding:14px 18px;background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);border-radius:var(--r2) var(--r2) 0 0;display:flex;align-items:center;gap:12px}
+.fhs-accent{width:4px;align-self:stretch;border-radius:2px;flex-shrink:0}
+.fhs-info{flex:1}.fhs-info h3{font-size:.95rem;font-weight:700;color:#fff}
+.fhs-info p{font-size:.72rem;color:rgba(255,255,255,.5);margin-top:2px}
+.fhs-folio{font-family:'IBM Plex Mono',monospace;font-size:.8rem;color:var(--amber2);background:rgba(255,255,255,.07);padding:5px 10px;border-radius:5px;border:1px solid rgba(255,255,255,.1);white-space:nowrap}
+.page-header{margin-bottom:20px}
+.page-header h2{font-size:1.2rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.page-header p{font-size:.8rem;color:var(--muted);margin-top:4px}
+.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.filter-bar input{flex:1;min-width:200px}
+.filter-bar select{width:160px}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.quick-card{background:var(--white);border-radius:var(--r2);box-shadow:var(--sh);padding:16px;cursor:pointer;transition:all .18s;border:2px solid transparent;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.quick-card:hover{box-shadow:var(--sh2);transform:translateY(-2px);border-color:var(--border)}
+.quick-card.qc-pg:hover{border-color:var(--purple);background:rgba(91,47,138,.03)}
+.quick-card.qc-sc:hover{border-color:var(--green);background:rgba(26,122,74,.03)}
+.quick-card.qc-pr:hover{border-color:var(--orange);background:rgba(184,92,10,.03)}
+.quick-card.qc-oe:hover{border-color:var(--blue);background:rgba(27,95,168,.03)}
+.quick-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+.quick-name{font-size:.82rem;font-weight:700;color:var(--text)}
+.quick-code{font-size:.68rem;font-family:'IBM Plex Mono',monospace;color:var(--muted)}
+.dash-grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surf2);border-radius:3px}
+.status-bar{background:var(--white);border-top:1px solid var(--border);padding:6px 20px;display:flex;align-items:center;gap:16px;font-size:.7rem;color:var(--muted)}
+.status-bar .sb-ok{color:var(--green);display:flex;align-items:center;gap:4px}
+/* Admin-specific */
+.admin-section{background:linear-gradient(135deg,rgba(13,31,60,.03),rgba(10,122,110,.04));border:1px solid rgba(10,122,110,.15);border-radius:var(--r2);padding:16px;margin-bottom:16px}
+.admin-label{display:flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--teal);margin-bottom:12px}
+.admin-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.admin-stat{background:var(--white);border-radius:var(--r);padding:14px;text-align:center;box-shadow:var(--sh)}
+.admin-stat .n{font-size:1.8rem;font-weight:700;color:var(--navy);font-family:'IBM Plex Mono',monospace}
+.admin-stat .l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.refresh-bar{display:flex;align-items:center;gap:10px;font-size:.75rem;color:var(--muted);margin-bottom:12px}
+.last-refresh{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--teal)}
+.spinner{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--border);border-top-color:var(--teal);
+  animation:spin .7s linear infinite;display:none;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.drive-link{color:var(--teal);text-decoration:none;font-size:.75rem;font-family:'IBM Plex Mono',monospace}
+.drive-link:hover{text-decoration:underline}
+.tag-admin{background:rgba(13,31,60,.08);color:var(--navy);font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:4px}
+/* Chip conectado */
+.cloud-status{display:flex;align-items:center;gap:5px;font-size:.72rem;padding:3px 8px;border-radius:5px}
+.cloud-status.on{background:#D4EDDA;color:var(--green)}
+.cloud-status.off{background:var(--surf);color:var(--muted)}
+.cloud-status.syncing{background:#FFF3CD;color:var(--amber)}
+
+/* ── ADJUNTOS ── */
+.attach-section-wrap{
+  background:rgba(10,122,110,.04);border:1px solid rgba(10,122,110,.18);
+  border-radius:var(--r2);padding:16px;margin-top:2px;
+}
+.attach-section-head{
+  display:flex;align-items:center;gap:8px;
+  font-size:.82rem;font-weight:600;color:var(--teal);margin-bottom:12px;
+}
+.attach-zone{
+  border:2px dashed var(--border);border-radius:var(--r);
+  padding:18px 14px;text-align:center;cursor:pointer;
+  transition:.2s;background:var(--white);position:relative;
+}
+.attach-zone:hover,.attach-zone.drag-over{border-color:var(--teal);background:rgba(10,122,110,.04)}
+.attach-zone input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+}
+.attach-zone-ico{font-size:1.5rem;margin-bottom:4px}
+.attach-zone-txt{font-size:.78rem;color:var(--muted);line-height:1.5}
+.attach-zone-txt b{color:var(--teal)}
+.attach-list{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.attach-item{
+  display:flex;align-items:center;gap:7px;
+  background:var(--white);border:1px solid var(--border);
+  border-radius:var(--r);padding:7px 10px;
+}
+.attach-item-name{flex:1;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach-item-sz{font-size:.68rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;flex-shrink:0}
+.attach-item-rm{
+  width:20px;height:20px;border-radius:50%;border:none;
+  background:rgba(192,57,43,.1);color:var(--red);cursor:pointer;
+  font-size:.72rem;flex-shrink:0;transition:.15s;
+}
+.attach-item-rm:hover{background:rgba(192,57,43,.2)}
+
+/* ── ACUSE DE RECIBO ── */
+.acuse-overlay{
+  position:fixed;inset:0;z-index:10000;
+  background:rgba(7,17,31,.85);backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.acuse-overlay.show{opacity:1;pointer-events:all}
+.acuse-box{
+  background:var(--white);border-radius:20px;
+  max-width:540px;width:92%;
+  box-shadow:0 32px 80px rgba(0,0,0,.45);
+  transform:translateY(30px) scale(.96);
+  transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  overflow:hidden;
+}
+.acuse-overlay.show .acuse-box{transform:none}
+.acuse-top{
+  background:linear-gradient(140deg,#0D1F3C 0%,#1A3A6E 100%);
+  padding:28px 32px 22px;position:relative;overflow:hidden;text-align:center;
+}
+.acuse-top::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.1) 1px,transparent 1px);
+  background-size:22px 22px;opacity:.35;pointer-events:none;
+}
+.acuse-check{
+  width:68px;height:68px;border-radius:50%;
+  background:rgba(26,122,74,.2);border:3px solid rgba(26,122,74,.45);
+  display:flex;align-items:center;justify-content:center;
+  font-size:2rem;margin:0 auto 14px;position:relative;z-index:1;
+  animation:checkPop .5s .1s both cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes checkPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.acuse-ttl{
+  font-size:1.22rem;font-weight:700;color:#fff;
+  margin-bottom:4px;position:relative;z-index:1;
+}
+.acuse-sub{font-size:.78rem;color:rgba(255,255,255,.48);position:relative;z-index:1;}
+.acuse-body{padding:22px 28px 4px}
+.acuse-folio-block{
+  text-align:center;
+  background:linear-gradient(135deg,rgba(10,122,110,.07),rgba(10,122,110,.03));
+  border:1px solid rgba(10,122,110,.22);border-radius:var(--r2);
+  padding:14px;margin-bottom:16px;
+}
+.acuse-folio-num{
+  font-family:'IBM Plex Mono',monospace;font-size:1.5rem;
+  font-weight:700;color:var(--teal);letter-spacing:.04em;
+}
+.acuse-folio-lbl{font-size:.7rem;color:var(--muted);margin-top:3px}
+.acuse-rows{display:flex;flex-direction:column;gap:0}
+.acuse-row{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding:8px 0;border-bottom:1px solid var(--surf2);gap:12px;
+}
+.acuse-row:last-child{border:none}
+.acuse-row .k{font-size:.78rem;color:var(--muted);font-weight:500;flex-shrink:0}
+.acuse-row .v{
+  font-size:.78rem;font-weight:600;color:var(--text);
+  text-align:right;word-break:break-word;
+}
+.acuse-email-box{
+  display:flex;gap:9px;
+  background:rgba(27,95,168,.05);border:1px solid rgba(27,95,168,.18);
+  border-radius:var(--r);padding:11px 13px;margin:14px 0 6px;
+  font-size:.78rem;line-height:1.55;color:var(--text);
+}
+.acuse-email-box .ico{font-size:1rem;flex-shrink:0;margin-top:1px}
+.acuse-adj-box{
+  display:flex;gap:9px;
+  background:rgba(26,122,74,.04);border:1px solid rgba(26,122,74,.18);
+  border-radius:var(--r);padding:10px 13px;margin-bottom:14px;
+  font-size:.78rem;line-height:1.5;color:var(--text);
+}
+.acuse-btns{
+  padding:12px 28px 22px;
+  display:flex;gap:9px;flex-wrap:wrap;
+}
+.acuse-btns .btn{flex:1;min-width:120px;justify-content:center}
+.acuse-ts{
+  text-align:center;font-size:.67rem;color:var(--light);
+  padding:0 28px 14px;font-family:'IBM Plex Mono',monospace;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ ACUSE DE RECIBO ═══ -->
+<div class="acuse-overlay" id="acuse-overlay">
+  <div class="acuse-box">
+    <div class="acuse-top">
+      <div class="acuse-check" id="acuse-icon">&#10003;</div>
+      <div class="acuse-ttl">Solicitud registrada</div>
+      <div class="acuse-sub">Acuse de recibo - CITRO / Universidad Veracruzana</div>
+    </div>
+    <div class="acuse-body">
+
+      <!-- Folio -->
+      <div class="acuse-folio-block">
+        <div class="acuse-folio-num" id="acuse-folio-num">--</div>
+        <div class="acuse-folio-lbl">Numero de folio asignado</div>
+      </div>
+
+      <!-- Datos -->
+      <div class="acuse-rows">
+        <div class="acuse-row"><span class="k">Tipo de tramite</span><span class="v" id="acuse-tipo">--</span></div>
+        <div class="acuse-row"><span class="k">Solicitante</span><span class="v" id="acuse-solicitante">--</span></div>
+        <div class="acuse-row"><span class="k">Matricula/Numero de Personal</span><span class="v" id="acuse-matricula">--</span></div>
+        <div class="acuse-row"><span class="k">Fecha de registro</span><span class="v" id="acuse-fecha">--</span></div>
+        <div class="acuse-row"><span class="k">Archivos adjuntos</span><span class="v" id="acuse-adjuntos">Ninguno</span></div>
+      </div>
+
+      <!-- Estado de correos -->
+      <div id="acuse-email-status" style="margin:14px 0 0;display:flex;flex-direction:column;gap:7px">
+        <div id="acuse-st-citro" style="display:flex;align-items:center;gap:9px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px">
+          <span id="acuse-st-citro-ico" style="font-size:1rem">&#9711;</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.76rem;font-weight:600;color:var(--text)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="385b514c4a575b4c0f785f55595154165b5755">[email&#160;protected]</a></div>
+            <div id="acuse-st-citro-txt" style="font-size:.7rem;color:var(--muted)">Preparando...</div>
+          </div>
+        </div>
+        <div id="acuse-st-sol" style="display:flex;align-items:center;gap:9px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px">
+          <span id="acuse-st-sol-ico" style="font-size:1rem">&#9711;</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.76rem;font-weight:600;color:var(--text)" id="acuse-st-sol-dest">Solicitante</div>
+            <div id="acuse-st-sol-txt" style="font-size:.7rem;color:var(--muted)">Preparando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista adjuntos -->
+      <div class="acuse-adj-box" id="acuse-adj-box" style="display:none;margin-top:10px">
+        <span>&#128206;</span>
+        <span id="acuse-adj-lista"></span>
+      </div>
+
+      <!-- ZIP -->
+      <div style="margin:12px 0 0;background:linear-gradient(135deg,rgba(10,122,110,.07),rgba(10,122,110,.03));border:1px solid rgba(10,122,110,.22);border-radius:var(--r2);padding:12px 14px">
+        <div style="font-size:.76rem;font-weight:700;color:var(--teal);margin-bottom:8px">&#128230; Paquete de entrega</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-bottom:8px" id="acuse-zip-desc">Formulario + adjuntos en un solo archivo.</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" id="btn-download-zip" onclick="descargarPaqueteZip()" style="flex:1;justify-content:center;padding:9px">&#8595; Descargar .zip</button><button class="btn btn-secondary btn-sm" id="btn-download-carta" onclick="acuseDescargarCarta()" style="flex:1;justify-content:center;padding:9px;border-color:var(--teal);color:var(--teal)">&#128196; Carta PDF</button></div>
+        <div id="zip-progress" style="display:none;margin-top:6px;font-size:.72rem;color:var(--muted);text-align:center"></div>
+      </div>
+
+      <!-- Reenviar manualmente -->
+      <div style="margin:10px 0 0;background:rgba(27,95,168,.04);border:1px solid rgba(27,95,168,.16);border-radius:var(--r2);padding:12px 14px">
+        <div style="font-size:.74rem;font-weight:700;color:var(--blue);margin-bottom:7px">&#128231; Reenviar correos</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="manualCorreoCITRO()" style="flex:1;min-width:130px;justify-content:center;padding:8px;font-size:.74rem">
+            &#127970; A <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="680b011c1a070b1c5f280f05090104460b0705">[email&#160;protected]</a>
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="manualAcuseSolicitante()" style="flex:1;min-width:130px;justify-content:center;padding:8px;font-size:.74rem">
+            &#128231; Acuse al solicitante
+          </button>
+        </div>
+        <div style="margin-top:7px;font-size:.69rem;color:var(--muted);line-height:1.5">
+          Abre tu cliente de correo (Outlook / Gmail) con los campos ya llenados. Adjunta el .zip antes de enviar.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="acuse-btns" style="padding:12px 24px 18px;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="acuseImprimir()" style="flex:1;justify-content:center">&#128247; Imprimir</button>
+      <button class="btn btn-secondary btn-sm" onclick="acuseNuevo()" style="flex:1;justify-content:center">+ Nuevo</button>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarAcuse()" style="flex:1;justify-content:center">Cerrar</button>
+    </div>
+    <div class="acuse-ts" id="acuse-ts"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     LOGIN OVERLAY
+═══════════════════════════════════════════════════ -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-emblem">C</div>
+    <h2>CITRO — Sistema de Trámites</h2>
+    <p>Ingrese su correo institucional UV<br>para acceder al portal de solicitudes.</p>
+
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:.75rem;color:rgba(255,255,255,.5);margin-bottom:5px;text-align:left">Nombre completo</label>
+      <input type="text" id="login-nombre" placeholder="Dr. / M.C. / Lic. Nombre Apellido"
+        style="width:100%;padding:10px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+        background:rgba(255,255,255,.08);color:#fff;font-size:.88rem;font-family:inherit;outline:none"
+        onkeydown="if(event.key==='Enter') document.getElementById('login-email').focus()"/>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:.75rem;color:rgba(255,255,255,.5);margin-bottom:5px;text-align:left">Correo institucional UV <span style="color:rgba(255,255,255,.3)">(@uv.mx o @estudiantes.uv.mx)</span></label>
+      <input type="email" id="login-email" placeholder="usuario@uv.mx"
+        style="width:100%;padding:10px 13px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+        background:rgba(255,255,255,.08);color:#fff;font-size:.88rem;font-family:inherit;outline:none"
+        onkeydown="if(event.key==='Enter') doEmailLogin()"/>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="doEmailLogin()">
+      &#8594; Entrar al sistema
+    </button>
+
+    <div class="login-divider">o continúe sin registrar correo</div>
+    <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="loginOffline()">
+      Continuar sin cuenta
+    </button>
+    <div class="login-note">
+      Correos @uv.mx tienen acceso completo al sistema.<br>
+      Los administradores autorizados verán el Panel Admin.
+    </div>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-emblem">C</div>
+    <div class="sb-title">CITRO — UV</div>
+    <div class="sb-sub">Centro de Inv. Tropicales</div>
+  </div>
+
+  <div class="sb-section">Principal</div>
+  <div class="nav-item active" data-screen="s-inicio" onclick="nav(this)">
+    <span class="nav-icon">🏠</span> Inicio
+  </div>
+  <div class="nav-item" data-screen="s-tramites" onclick="nav(this)">
+    <span class="nav-icon">📋</span> Mis Trámites
+    <span class="nav-badge" id="nb-total">0</span>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section">Nueva Solicitud</div>
+  <div class="nav-item" data-screen="s-form" data-type="pg" onclick="navForm(this)">
+    <span class="nav-icon">📩</span> Petición General
+    <span class="nav-badge" id="nb-pg" style="background:rgba(91,47,138,.6)">0</span>
+  </div>
+  <div class="nav-item" data-screen="s-form" data-type="sc" onclick="navForm(this)">
+    <span class="nav-icon">🌿</span> Salida de Campo
+    <span class="nav-badge" id="nb-sc" style="background:rgba(26,122,74,.6)">0</span>
+  </div>
+  <div class="nav-item" data-screen="s-form" data-type="pr" onclick="navForm(this)">
+    <span class="nav-icon">📦</span> Petición Recursos
+    <span class="nav-badge" id="nb-pr" style="background:rgba(184,92,10,.6)">0</span>
+  </div>
+  <div class="nav-item" data-screen="s-form" data-type="oe" onclick="navForm(this)">
+    <span class="nav-icon">🎓</span> Org. de Evento
+    <span class="nav-badge" id="nb-oe" style="background:rgba(27,95,168,.6)">0</span>
+  </div>
+
+  <div class="sb-divider"></div>
+  <!-- ADMIN ONLY -->
+  <div class="sb-section admin-only" id="sb-admin-section">Administración</div>
+  <div class="nav-item admin-only" id="nav-admin" data-screen="s-admin" onclick="nav(this)">
+    <span class="nav-icon">🔐</span> Panel Admin
+    <span class="nav-badge" id="nb-cloud" style="background:rgba(13,31,60,.4)">0</span>
+  </div>
+
+  <div class="sb-divider"></div>
+  <div class="sb-section">Sistema</div>
+  <div class="nav-item" data-screen="s-config" onclick="nav(this)" id="nav-config-item" style="display:none">
+    <span class="nav-icon">⚙️</span> Configuración
+  </div>
+  <div class="nav-item" onclick="logout()">
+    <span class="nav-icon">🚪</span> Cerrar sesión
+  </div>
+
+  <div class="sb-footer">
+    CITRO-Formularios v3.0<br>
+    <span style="font-family:'IBM Plex Mono',monospace">CITRO / UV · 2025</span>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════════ -->
+<div class="main">
+  <div class="topbar">
+    <button id="mobile-menu-btn" style="display:none;background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--text);padding:8px" onclick="toggleMobileMenu()">☰</button>
+    <div class="topbar-title" id="topbar-title">Inicio <span class="topbar-sub">Panel de control</span></div>
+    <div class="topbar-right">
+      <div class="sync-indicator" id="syncIndicator">
+        <div class="sync-dot off" id="syncDot"></div>
+        <span id="syncLabel">Sin conexión</span>
+      </div>
+      <div class="user-chip" id="userChip" onclick="toggleUserMenu()" style="display:none">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span class="user-name" id="userName">...</span>
+        <span class="admin-badge" id="userAdminBadge" style="display:none">ADMIN</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ INICIO ═══ -->
+    <div class="screen active" id="s-inicio">
+      <div class="page-header">
+        <h2>🏠 Panel de Control</h2>
+        <p>Bienvenido al sistema de gestión de trámites CITRO · Universidad Veracruzana</p>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card c-teal"><div class="stat-num" id="st-total">0</div><div class="stat-lbl">Trámites totales</div><div class="stat-trend">Todos los tipos</div></div>
+        <div class="stat-card c-amber"><div class="stat-num" id="st-pend">0</div><div class="stat-lbl">En proceso</div><div class="stat-trend">Pendientes</div></div>
+        <div class="stat-card c-green"><div class="stat-num" id="st-done">0</div><div class="stat-lbl">Completados</div><div class="stat-trend">PDF generados</div></div>
+        <div class="stat-card c-blue"><div class="stat-num" id="st-today">0</div><div class="stat-lbl">Nuevos hoy</div><div class="stat-trend" id="st-date-lbl">—</div></div>
+      </div>
+      <div class="quick-grid">
+        <div class="quick-card qc-pg" onclick="navFormDirect('pg')"><div class="quick-icon" style="background:rgba(91,47,138,.1)">📩</div><div class="quick-name">Petición General</div><div class="quick-code">PG-YYYY-NNN</div></div>
+        <div class="quick-card qc-sc" onclick="navFormDirect('sc')"><div class="quick-icon" style="background:rgba(26,122,74,.1)">🌿</div><div class="quick-name">Salida de Campo</div><div class="quick-code">SC-YYYY-NNN</div></div>
+        <div class="quick-card qc-pr" onclick="navFormDirect('pr')"><div class="quick-icon" style="background:rgba(184,92,10,.1)">📦</div><div class="quick-name">Petición de Recursos</div><div class="quick-code">PR-YYYY-NNN</div></div>
+        <div class="quick-card qc-oe" onclick="navFormDirect('oe')"><div class="quick-icon" style="background:rgba(27,95,168,.1)">🎓</div><div class="quick-name">Organización de Evento</div><div class="quick-code">OE-YYYY-NNN</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-header"><span>📅</span><h3>Actividad Reciente</h3><span class="spacer"></span><button class="btn btn-ghost btn-sm" onclick="nav(document.querySelector('[data-screen=s-tramites]'))">Ver todos →</button></div>
+          <div class="card-body p0"><div id="dash-timeline" style="padding:12px 16px"><div class="empty-state" id="dash-empty"><div class="es-icon">📭</div><p>No hay trámites aún. Use los accesos directos para crear su primera solicitud.</p></div></div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="card">
+            <div class="card-header"><span>📊</span><h3>Por tipo</h3></div>
+            <div class="card-body" style="padding:12px 16px"><div id="type-bars"><div style="text-align:center;padding:16px;color:var(--muted);font-size:.78rem">Sin datos aún</div></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span>☁️</span><h3>Estado de sincronización</h3></div>
+            <div class="card-body" style="padding:12px 16px;font-size:.78rem">
+              <div id="sync-detail" style="color:var(--muted)">Inicie sesión con Google para activar la sincronización automática con Drive y la hoja de registros.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MIS TRÁMITES ═══ -->
+    <div class="screen" id="s-tramites">
+      <div class="page-header"><h2>📋 Mis Trámites</h2><p>Historial de solicitudes registradas en este dispositivo</p></div>
+      <div class="card">
+        <div class="card-body">
+          <div class="filter-bar">
+            <input type="text" id="q-search" placeholder="Buscar por folio, nombre o tipo…" oninput="renderTable()"/>
+            <select id="q-tipo" onchange="renderTable()"><option value="">Todos los tipos</option><option value="pg">Petición General</option><option value="sc">Salida de Campo</option><option value="pr">Petición de Recursos</option><option value="oe">Organización de Evento</option></select>
+            <select id="q-estado" onchange="renderTable()"><option value="">Todos los estados</option><option value="Pendiente">Pendiente</option><option value="En revisión">En revisión</option><option value="Completado">Completado</option></select>
+            <button class="btn btn-primary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table id="main-table">
+              <thead><tr><th>Folio</th><th>Tipo</th><th>Solicitante</th><th>Matrícula</th><th>Fecha</th><th>Estado</th><th>Drive</th><th>Acciones</th></tr></thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="table-empty" style="display:none"><div class="es-icon">📭</div><p>No se encontraron trámites.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ FORMULARIOS ═══ -->
+    <div class="screen" id="s-form">
+      <div class="form-tabs" id="form-tabs">
+        <div class="form-tab active" data-t="pg" onclick="switchForm('pg',this)"><span>📩</span> Petición General <span class="tab-code">PG</span></div>
+        <div class="form-tab" data-t="sc" onclick="switchForm('sc',this)"><span>🌿</span> Salida de Campo <span class="tab-code">SC</span></div>
+        <div class="form-tab" data-t="pr" onclick="switchForm('pr',this)"><span>📦</span> Petición Recursos <span class="tab-code">PR</span></div>
+        <div class="form-tab" data-t="oe" onclick="switchForm('oe',this)"><span>🎓</span> Org. Evento <span class="tab-code">OE</span></div>
+      </div>
+
+      <!-- PG -->
+      <div id="form-pg" class="form-def">
+        <div class="form-wrap">
+          <div class="form-main">
+            <div class="form-header-strip"><div class="fhs-accent" style="background:var(--purple)"></div><div class="fhs-info"><h3>Nueva Petición General — CITRO / UV</h3><p>Asunto: Petición General · Complete todos los campos obligatorios *</p></div><div class="fhs-folio" id="pg-folio-hdr">PG-YYYY-NNN</div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--teal)">01</span><h4>Identificación del Solicitante</h4></div><div class="section-body"><div class="fields">
+              <div class="field"><label>Apellido(s)<span class="req">*</span></label><input type="text" id="pg-apellidos" placeholder="García Morales"/></div>
+              <div class="field"><label>Nombre(s)<span class="req">*</span></label><input type="text" id="pg-nombres" placeholder="Alejandro"/></div>
+              <div class="field"><label>Matricula/Numero de Personal<span class="req">*</span></label><input type="text" id="pg-matricula" placeholder="S23XXXXXX" maxlength="10"/></div>
+              <div class="field"><label>Correo institucional<span class="req">*</span></label><input type="email" id="pg-correo" placeholder="s23xxx@estudiantes.uv.mx"/></div>
+              <div class="field col2"><label>Programa académico<span class="req">*</span></label><select id="pg-programa"><option value="">— Seleccione —</option><optgroup label="Posgrado"><option>Maestría en Ciencias Biológicas</option><option>Maestría en Ecología y Manejo de Recursos</option><option>Doctorado en Ciencias Biológicas y Agropecuarias</option><option>Doctorado en Ecología Tropical</option></optgroup><optgroup label="Categoría"><option>Académico</option><option>Posdoctorante</option><option>Técnico Académico</option></optgroup><optgroup label="Otro"><option>Otro</option></optgroup></select></div>
+              <div class="field col2"><label>Director(a) de tesis</label><input type="text" id="pg-director" placeholder="Dr./Dra. Nombre Completo"/></div>
+            </div></div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--purple)">02</span><h4>Datos de la Petición General</h4></div><div class="section-body"><div class="fields">
+              <div class="field col2"><label>Tipo de petición<span class="req">*</span></label><select id="pg-tipo"><option value="">— Seleccione tipo —</option><optgroup label="Académico"><option>Prórroga de inscripción</option><option>Cambio de director(a) de tesis</option><option>Incorporación de co-director(a)</option><option>Cambio de tema de tesis</option><option>Justificación de inasistencia</option></optgroup><optgroup label="Administrativo"><option>Constancia de estudios</option><option>Carta de no adeudo</option><option>Acceso a laboratorios / instalaciones</option><option>Apoyo económico extraordinario</option></optgroup><optgroup label="Otro"><option>Petición diversa (describir)</option></optgroup></select></div>
+              <div class="field"><label>Fecha de solicitud<span class="req">*</span></label><input type="date" id="pg-fecha"/></div>
+              <div class="field"><label>Urgencia</label><select id="pg-urgencia"><option value="Normal (10 días hábiles)">Normal (10 días hábiles)</option><option value="Prioritario (5 días hábiles)">Prioritario (5 días hábiles)</option><option value="URGENTE">URGENTE</option></select></div>
+              <div class="field full"><label>Descripción de la petición<span class="req">*</span></label><textarea id="pg-descripcion" rows="4" placeholder="Exponga detalladamente la petición, antecedentes, justificación y lo que solicita formalmente al CITRO…"></textarea></div>
+              <div class="field col2"><label>Documentos adjuntos</label><input type="text" id="pg-adjuntos" placeholder="Archivos separados por coma"/></div>
+              <div class="field col2"><label>Observaciones adicionales</label><textarea id="pg-obs" rows="2" placeholder="Información complementaria…"></textarea></div>
+            </div></div></div>
+            <div id="pg-alert" class="alert alert-success"><span>&#10003;</span><span id="pg-alert-msg"></span></div>
+            <!-- ADJUNTOS PG -->
+            <div class="section-block">
+              <div class="section-head"><span class="section-tag" style="background:var(--teal)">03</span><h4>Documentos Adjuntos</h4><span style="font-size:.72rem;color:var(--muted);margin-left:8px">Opcional - Se enviaran junto con el formulario</span></div>
+              <div class="section-body">
+                <div class="attach-section-wrap">
+                  <div class="attach-section-head">&#128206; Arrastra archivos o haz clic para seleccionar</div>
+                  <div class="attach-zone" id="az-pg" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'pg')">
+                    <input type="file" id="af-pg" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handleFiles(this.files,'pg')"/>
+                    <div class="attach-zone-ico">&#128196;</div>
+                    <div class="attach-zone-txt">PDF, Word, Excel, Imagenes<br><b>Hasta 10 MB por archivo</b></div>
+                  </div>
+                  <div class="attach-list" id="al-pg"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btn-submit-pg" onclick="submitForm('pg')">&#8595; Registrar + Enviar</button>
+              <button class="btn btn-secondary" onclick="resetForm('pg')">↺ Limpiar</button>
+              <button class="btn btn-ghost" onclick="printForm('pg')">🖨 Imprimir carta</button>
+            </div>
+          </div>
+          <div class="form-sidebar-col">
+            <div class="info-card"><div class="info-card-head"><span class="ico">📩</span><h5>Petición General</h5></div><div class="info-card-body"><strong>Folio actual</strong><div class="folio-display"><span class="folio-code" id="pg-folio-sb">PG-YYYY-NNN</span><span class="folio-label">Asignado al enviar</span></div><strong style="margin-top:8px">Salida</strong><code>PeticionGeneral_[Mat]_[Apell]_[YYYYMMDD]</code></div></div>
+            <div class="info-card" id="sidebar-cloud-pg"><div class="info-card-head"><span class="ico">☁️</span><h5>Drive / Sheets</h5></div><div class="info-card-body" id="cloud-status-pg">Al enviar, el documento se guardará en Drive y se registrará en la hoja de seguimiento CITRO.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SC -->
+      <div id="form-sc" class="form-def" style="display:none">
+        <div class="form-wrap">
+          <div class="form-main">
+            <div class="form-header-strip"><div class="fhs-accent" style="background:var(--green)"></div><div class="fhs-info"><h3>Carta de Salida de Campo — CITRO / UV</h3><p>Asunto: Solicitud de Aval para Salida de Campo</p></div><div class="fhs-folio" id="sc-folio-hdr">SC-YYYY-NNN</div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--teal)">01</span><h4>Identificación del Solicitante</h4></div><div class="section-body"><div class="fields">
+              <div class="field"><label>Apellido(s)<span class="req">*</span></label><input type="text" id="sc-apellidos" placeholder="García Morales"/></div>
+              <div class="field"><label>Nombre(s)<span class="req">*</span></label><input type="text" id="sc-nombres" placeholder="Alejandro"/></div>
+              <div class="field"><label>Grado académico<span class="req">*</span></label><select id="sc-grado"><option value="">— Grado —</option><option>Lic.</option><option>Ing.</option><option>M.C.</option><option>M.S.</option><option>Dr.</option><option>Dra.</option><option>Posdoctorante</option><option>Académico</option></select></div>
+              <div class="field"><label>Matricula/Numero de Personal<span class="req">*</span></label><input type="text" id="sc-matricula" placeholder="S23XXXXXX"/></div>
+              <div class="field col2"><label>Correo institucional<span class="req">*</span></label><input type="email" id="sc-correo" placeholder="s23xxx@estudiantes.uv.mx"/></div>
+              <div class="field col2"><label>Director(a) de tesis</label><input type="text" id="sc-director" placeholder="Dr./Dra. Nombre Completo"/></div>
+            </div></div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--green)">02</span><h4>Datos de la Salida de Campo</h4></div><div class="section-body"><div class="fields">
+              <div class="field full"><label>Lugar(es) de la salida <span class="hint-tag">[Lugares]</span><span class="req">*</span></label><textarea id="sc-lugares" rows="3" placeholder="Municipios, ejidos, reservas, coordenadas…"></textarea></div>
+              <div class="field full"><label>Actividades a realizar <span class="hint-tag">[Actividades]</span><span class="req">*</span></label><textarea id="sc-actividades" rows="3" placeholder="Muestreo, colecta, entrevistas, mediciones…"></textarea></div>
+              <div class="field"><label>Fecha de salida <span class="hint-tag">[Fecha]</span><span class="req">*</span></label><input type="date" id="sc-fecha-salida"/></div>
+              <div class="field"><label>Fecha de regreso<span class="req">*</span></label><input type="date" id="sc-fecha-regreso"/></div>
+              <div class="field"><label>N.° de participantes</label><input type="number" id="sc-participantes" placeholder="4" min="1"/></div>
+              <div class="field"><label>Vehículo / Transporte</label><input type="text" id="sc-transporte" placeholder="Vehículo institucional"/></div>
+            </div></div></div>
+            <div id="sc-alert" class="alert alert-success"><span>&#10003;</span><span id="sc-alert-msg"></span></div>
+            <!-- ADJUNTOS SC -->
+            <div class="section-block">
+              <div class="section-head"><span class="section-tag" style="background:var(--teal)">03</span><h4>Documentos Adjuntos</h4><span style="font-size:.72rem;color:var(--muted);margin-left:8px">Opcional</span></div>
+              <div class="section-body">
+                <div class="attach-section-wrap">
+                  <div class="attach-section-head">&#128206; Arrastra archivos o haz clic para seleccionar</div>
+                  <div class="attach-zone" id="az-sc" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'sc')">
+                    <input type="file" id="af-sc" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handleFiles(this.files,'sc')"/>
+                    <div class="attach-zone-ico">&#128196;</div>
+                    <div class="attach-zone-txt">PDF, Word, Excel, Imagenes<br><b>Hasta 10 MB por archivo</b></div>
+                  </div>
+                  <div class="attach-list" id="al-sc"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btn-submit-sc" onclick="submitForm('sc')">&#8595; Registrar + Enviar</button>
+              <button class="btn btn-secondary" onclick="resetForm('sc')">↺ Limpiar</button>
+              <button class="btn btn-ghost" onclick="printForm('sc')">🖨 Imprimir carta</button>
+            </div>
+          </div>
+          <div class="form-sidebar-col">
+            <div class="info-card"><div class="info-card-head"><span class="ico">🌿</span><h5>Salida de Campo</h5></div><div class="info-card-body"><strong>Folio actual</strong><div class="folio-display"><span class="folio-code" id="sc-folio-sb">SC-YYYY-NNN</span><span class="folio-label">Asignado al enviar</span></div><strong style="margin-top:8px">Campos plantilla</strong><code>[Nombre y grado]</code> <code>[Lugares]</code> <code>[Actividades]</code> <code>[Fecha]</code></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PR -->
+      <div id="form-pr" class="form-def" style="display:none">
+        <div class="form-wrap">
+          <div class="form-main">
+            <div class="form-header-strip"><div class="fhs-accent" style="background:var(--orange)"></div><div class="fhs-info"><h3>Petición de Recursos Académicos — CITRO / UV</h3><p>Asunto: Solicitud de Recursos Académicos</p></div><div class="fhs-folio" id="pr-folio-hdr">PR-YYYY-NNN</div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--teal)">01</span><h4>Identificación del Solicitante</h4></div><div class="section-body"><div class="fields">
+              <div class="field"><label>Apellido(s) <span class="hint-tag">[Nombre]</span><span class="req">*</span></label><input type="text" id="pr-apellidos" placeholder="García Morales"/></div>
+              <div class="field"><label>Nombre(s)<span class="req">*</span></label><input type="text" id="pr-nombres" placeholder="Alejandro"/></div>
+              <div class="field"><label>Matricula/Numero de Personal <span class="hint-tag">[Matrícula]</span><span class="req">*</span></label><input type="text" id="pr-matricula" placeholder="S23XXXXXX"/></div>
+              <div class="field"><label>Correo institucional</label><input type="email" id="pr-correo" placeholder="s23xxx@estudiantes.uv.mx"/></div>
+              <div class="field col2"><label>Programa académico</label><select id="pr-programa"><option value="">— Seleccione —</option><optgroup label="Posgrado"><option>Maestría en Ciencias Biológicas</option><option>Maestría en Ecología y Manejo de Recursos</option><option>Doctorado en Ciencias Biológicas y Agropecuarias</option><option>Doctorado en Ecología Tropical</option></optgroup><optgroup label="Categoría"><option>Académico</option><option>Posdoctorante</option><option>Técnico Académico</option></optgroup><optgroup label="Otro"><option>Otro</option></optgroup></select></div>
+            </div></div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--orange)">02</span><h4>Datos de la Petición de Recursos</h4></div><div class="section-body"><div class="fields">
+              <div class="field full"><label>Actividad académica <span class="hint-tag">[Actividad]</span><span class="req">*</span></label><input type="text" id="pr-actividad" placeholder="Nombre de la actividad para la que se solicitan los recursos…"/></div>
+              <div class="field full"><label>Justificación <span class="hint-tag">[Justificación]</span><span class="req">*</span></label><textarea id="pr-justificacion" rows="4" placeholder="Argumente la necesidad, pertinencia e impacto académico…"></textarea></div>
+              <div class="field col2"><label>Tipo de recurso solicitado<span class="req">*</span></label><select id="pr-tipo"><option value="">— Seleccione —</option><option>Materiales de laboratorio</option><option>Equipamiento científico</option><option>Reactivos y consumibles</option><option>Software / Licencias</option><option>Viáticos y transporte</option><option>Apoyo bibliográfico</option><option>Apoyo técnico / servicios</option><option>Otro</option></select></div>
+              <div class="field"><label>Monto estimado (MXN)</label><input type="number" id="pr-monto" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="field"><label>Proyecto / Cuenta asociada</label><input type="text" id="pr-proyecto" placeholder="Clave del proyecto"/></div>
+              <div class="field"><label>Fecha requerida<span class="req">*</span></label><input type="date" id="pr-fecha"/></div>
+            </div></div></div>
+            <div id="pr-alert" class="alert alert-success"><span>&#10003;</span><span id="pr-alert-msg"></span></div>
+            <!-- ADJUNTOS PR -->
+            <div class="section-block">
+              <div class="section-head"><span class="section-tag" style="background:var(--teal)">04</span><h4>Documentos Adjuntos</h4><span style="font-size:.72rem;color:var(--muted);margin-left:8px">Opcional</span></div>
+              <div class="section-body">
+                <div class="attach-section-wrap">
+                  <div class="attach-section-head">&#128206; Arrastra archivos o haz clic para seleccionar</div>
+                  <div class="attach-zone" id="az-pr" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'pr')">
+                    <input type="file" id="af-pr" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handleFiles(this.files,'pr')"/>
+                    <div class="attach-zone-ico">&#128196;</div>
+                    <div class="attach-zone-txt">PDF, Word, Excel, Imagenes<br><b>Hasta 10 MB por archivo</b></div>
+                  </div>
+                  <div class="attach-list" id="al-pr"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btn-submit-pr" onclick="submitForm('pr')">&#8595; Registrar + Enviar</button>
+              <button class="btn btn-secondary" onclick="resetForm('pr')">↺ Limpiar</button>
+              <button class="btn btn-ghost" onclick="printForm('pr')">🖨 Imprimir</button>
+            </div>
+          </div>
+          <div class="form-sidebar-col">
+            <div class="info-card"><div class="info-card-head"><span class="ico">📦</span><h5>Petición de Recursos</h5></div><div class="info-card-body"><strong>Folio actual</strong><div class="folio-display"><span class="folio-code" id="pr-folio-sb">PR-YYYY-NNN</span><span class="folio-label">Asignado al enviar</span></div><strong style="margin-top:8px">Campos plantilla</strong><code>[Actividad]</code> <code>[Justificación]</code> <code>[Nombre]</code> <code>[Matrícula]</code></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OE -->
+      <div id="form-oe" class="form-def" style="display:none">
+        <div class="form-wrap">
+          <div class="form-main">
+            <div class="form-header-strip"><div class="fhs-accent" style="background:var(--blue)"></div><div class="fhs-info"><h3>Organización de Evento Académico — CITRO / UV</h3><p>Asunto: Solicitud de Aval para Organización de Evento Académico</p></div><div class="fhs-folio" id="oe-folio-hdr">OE-YYYY-NNN</div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--teal)">01</span><h4>Identificación del Solicitante</h4></div><div class="section-body"><div class="fields">
+              <div class="field"><label>Apellido(s)<span class="req">*</span></label><input type="text" id="oe-apellidos" placeholder="García Morales"/></div>
+              <div class="field"><label>Nombre(s)<span class="req">*</span></label><input type="text" id="oe-nombres" placeholder="Alejandro"/></div>
+              <div class="field"><label>Matricula/Numero de Personal<span class="req">*</span></label><input type="text" id="oe-matricula" placeholder="S23XXXXXX"/></div>
+              <div class="field"><label>Correo institucional</label><input type="email" id="oe-correo" placeholder="s23xxx@estudiantes.uv.mx"/></div>
+              <div class="field col2"><label>Programa académico</label><select id="oe-programa"><option value="">— Seleccione —</option><optgroup label="Posgrado"><option>Maestría en Ciencias Biológicas</option><option>Maestría en Ecología y Manejo de Recursos</option><option>Doctorado en Ciencias Biológicas y Agropecuarias</option><option>Doctorado en Ecología Tropical</option></optgroup><optgroup label="Categoría"><option>Académico</option><option>Posdoctorante</option><option>Técnico Académico</option></optgroup><optgroup label="Otro"><option>Otro</option></optgroup></select></div>
+            </div></div></div>
+            <div class="section-block"><div class="section-head"><span class="section-tag" style="background:var(--blue)">02</span><h4>Datos del Evento Académico</h4></div><div class="section-body"><div class="fields">
+              <div class="field full"><label>Nombre del evento <span class="hint-tag">[Evento]</span><span class="req">*</span></label><input type="text" id="oe-nombre" placeholder="Título del congreso, simposio, taller, seminario…"/></div>
+              <div class="field"><label>Fecha del evento <span class="hint-tag">[Datos]</span><span class="req">*</span></label><input type="date" id="oe-fecha"/></div>
+              <div class="field col2"><label>Sede / Lugar <span class="hint-tag">[Datos]</span><span class="req">*</span></label><input type="text" id="oe-sede" placeholder="Instalación, municipio, estado…"/></div>
+              <div class="field"><label>Presupuesto (MXN) <span class="hint-tag">[Monto]</span><span class="req">*</span></label><input type="number" id="oe-presupuesto" placeholder="0.00" min="0" step="0.01"/></div>
+              <div class="field"><label>N.° asistentes <span class="hint-tag">[Número]</span><span class="req">*</span></label><input type="number" id="oe-asistentes" placeholder="80" min="1"/></div>
+              <div class="field full"><label>Proyecto asociado <span class="hint-tag">[Proyecto]</span><span class="req">*</span></label><input type="text" id="oe-proyecto" placeholder="Clave o nombre del proyecto de investigación vinculado al evento"/></div>
+              <div class="field full"><label>Impacto en LGAC / PLADEA <span class="hint-tag">[Descripción]</span><span class="req">*</span></label><textarea id="oe-lgac" rows="4" placeholder="Relación con las LGAC y el PLADEA de la entidad académica…"></textarea></div>
+            </div></div></div>
+            <div id="oe-alert" class="alert alert-success"><span>&#10003;</span><span id="oe-alert-msg"></span></div>
+            <!-- ADJUNTOS OE -->
+            <div class="section-block">
+              <div class="section-head"><span class="section-tag" style="background:var(--teal)">03</span><h4>Documentos Adjuntos</h4><span style="font-size:.72rem;color:var(--muted);margin-left:8px">Opcional</span></div>
+              <div class="section-body">
+                <div class="attach-section-wrap">
+                  <div class="attach-section-head">&#128206; Arrastra archivos o haz clic para seleccionar</div>
+                  <div class="attach-zone" id="az-oe" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'oe')">
+                    <input type="file" id="af-oe" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handleFiles(this.files,'oe')"/>
+                    <div class="attach-zone-ico">&#128196;</div>
+                    <div class="attach-zone-txt">PDF, Word, Excel, Imagenes<br><b>Hasta 10 MB por archivo</b></div>
+                  </div>
+                  <div class="attach-list" id="al-oe"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btn-submit-oe" onclick="submitForm('oe')">&#8595; Registrar + Enviar</button>
+              <button class="btn btn-secondary" onclick="resetForm('oe')">↺ Limpiar</button>
+              <button class="btn btn-ghost" onclick="printForm('oe')">🖨 Imprimir carta</button>
+            </div>
+          </div>
+          <div class="form-sidebar-col">
+            <div class="info-card"><div class="info-card-head"><span class="ico">🎓</span><h5>Organización de Evento</h5></div><div class="info-card-body"><strong>Folio actual</strong><div class="folio-display"><span class="folio-code" id="oe-folio-sb">OE-YYYY-NNN</span><span class="folio-label">Asignado al enviar</span></div><strong style="margin-top:8px">Campos plantilla</strong><code>[Evento]</code> <code>[Datos]</code> <code>[Monto]</code> <code>[Número]</code> <code>[Proyecto]</code> <code>[Descripción]</code></div></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /s-form -->
+
+    <!-- ═══ PANEL ADMINISTRACIÓN ═══ -->
+    <div class="screen" id="s-admin">
+      <div class="page-header">
+        <h2>🔐 Panel de Administración</h2>
+        <p>Vista exclusiva para administradores CITRO · Datos sincronizados desde Google Sheets</p>
+      </div>
+
+      <!-- Stats globales Drive -->
+      <div class="admin-section">
+        <div class="admin-label">📊 Estadísticas globales (Google Sheets)</div>
+        <div class="admin-grid" id="admin-stats-grid">
+          <div class="admin-stat"><div class="n" id="adm-total">—</div><div class="l">Total registros</div></div>
+          <div class="admin-stat"><div class="n" id="adm-pend">—</div><div class="l">Pendientes</div></div>
+          <div class="admin-stat"><div class="n" id="adm-done">—</div><div class="l">Completados</div></div>
+          <div class="admin-stat"><div class="n" id="adm-hoy">—</div><div class="l">Hoy</div></div>
+        </div>
+      </div>
+
+      <!-- Todos los trámites (Sheet) -->
+      <div class="card">
+        <div class="card-header">
+          <span>📋</span><h3>Todos los Trámites — Registro Central</h3>
+          <span class="spacer"></span>
+          <div class="refresh-bar">
+            <div class="spinner" id="adminSpinner"></div>
+            <span>Última actualización: <span class="last-refresh" id="lastRefreshLbl">—</span></span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="refreshAdminData(true)">↺ Actualizar</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportAdminCSV()">⬇ CSV</button>
+        </div>
+        <div class="card-body p0">
+          <div style="padding:10px 16px;background:var(--surf);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="adm-search" placeholder="Buscar…" style="width:220px" oninput="renderAdminTable()"/>
+            <select id="adm-tipo" onchange="renderAdminTable()" style="width:180px"><option value="">Todos los tipos</option><option value="Petición General">Petición General</option><option value="Salida de Campo">Salida de Campo</option><option value="Petición de Recursos">Petición de Recursos</option><option value="Organización de Evento">Organización de Evento</option></select>
+            <select id="adm-estado" onchange="renderAdminTable()" style="width:160px"><option value="">Todos los estados</option><option>Pendiente</option><option>En revisión</option><option>Completado</option><option>Cancelado</option></select>
+          </div>
+          <div class="table-wrap">
+            <table id="admin-table">
+              <thead><tr><th>Folio</th><th>Tipo</th><th>Apellidos</th><th>Matrícula</th><th>Correo</th><th>Fecha Registro</th><th>Estado</th><th>Drive</th><th>Acciones</th></tr></thead>
+              <tbody id="admin-tbody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="admin-empty" style="display:none"><div class="es-icon">📭</div><p>Sin registros en el servidor. Actualice o espere a que los usuarios envíen solicitudes.</p></div>
+        </div>
+      </div>
+
+      <!-- Gestión de admins -->
+      <div class="card">
+        <div class="card-header"><span>👤</span><h3>Administradores autorizados</h3></div>
+        <div class="card-body">
+          <div id="admins-list" style="margin-bottom:16px;display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-size:.8rem;color:var(--muted)">Cargando lista de admins…</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="email" id="new-admin-email" placeholder="correo@uv.mx" style="width:240px"/>
+            <input type="text" id="new-admin-nombre" placeholder="Nombre completo (opcional)" style="width:200px"/>
+            <button class="btn btn-primary btn-sm" onclick="addAdmin()">+ Agregar admin</button>
+          </div>
+          <div id="admin-msg" class="alert" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div><!-- /s-admin -->
+
+    <!-- ═══ CONFIGURACIÓN ═══ -->
+    <div class="screen" id="s-config">
+      <div class="page-header"><h2>⚙️ Configuración</h2><p>Ajustes del sistema CITRO-Formularios</p></div>
+      <div class="card">
+        <div class="card-header"><span>☁️</span><h3>Conexión Google Drive / Sheets</h3></div>
+        <div class="card-body">
+          <div class="alert alert-info show" style="margin-bottom:12px">
+            <span>ℹ️</span><span>Configure la URL del backend (Google Apps Script desplegado como Web App) para activar la sincronización con Drive y Sheets.</span>
+          </div>
+          <div class="fields">
+            <div class="field full"><label>URL del Web App (Google Apps Script)<span class="req">*</span></label>
+              <input type="text" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/XXXX/exec"/>
+              <span class="field-hint">Obtiene esta URL al desplegar el script CITRO_Backend.gs como Web App</span>
+            </div>
+            <div class="field full"><label>Token secreto compartido<span class="req">*</span></label>
+              <input type="text" id="cfg-secret" placeholder="citro-uv-2025-secret"/>
+              <span class="field-hint">Debe coincidir con la constante SECRET_TOKEN en el script GAS</span>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="saveConfig()">💾 Guardar y probar conexión</button>
+            <div id="conn-test-result" style="display:flex;align-items:center;font-size:.8rem;color:var(--muted);gap:6px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>🏫</span><h3>Datos institucionales</h3></div>
+        <div class="card-body">
+          <div class="g2">
+            <div class="field"><label>Institución</label><input type="text" id="cfg-inst" value="Centro de Investigaciones Tropicales (CITRO)"/></div>
+            <div class="field"><label>Universidad</label><input type="text" id="cfg-uni" value="Universidad Veracruzana"/></div>
+            <div class="field"><label>Director(a) CITRO</label><input type="text" id="cfg-director" placeholder="Dr./Dra. Nombre del Director"/></div>
+            <div class="field"><label>Correo CITRO</label><input type="email" id="cfg-mail" placeholder="citro@uv.mx"/></div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:12px" onclick="saveInstitConfig()">💾 Guardar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>📊</span><h3>Datos locales</h3></div>
+        <div class="card-body">
+          <div id="config-stats" style="font-size:.82rem;color:var(--muted);line-height:2"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV local</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ JSON backup</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Borrar datos locales</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>&#127912;</span><h3>Tema visual</h3></div>
+        <div class="card-body">
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px">Elige el esquema de colores. El cambio es instantaneo y se guarda en este dispositivo.</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <div class="tema-card activo" id="tema-oceano" onclick="aplicarTema('oceano')">
+              <div class="tema-preview"><div class="tema-sb" style="background:linear-gradient(180deg,#0D1F3C,#16325A)"></div><div class="tema-body"><div class="tema-row hi" style="background:#0A7A6E"></div><div class="tema-row"></div><div class="tema-row" style="width:75%"></div></div></div>
+              <div class="tema-label"><span class="tema-dot" style="background:linear-gradient(135deg,#0D1F3C,#0A7A6E)"></span><div><div style="font-weight:600;font-size:.82rem">Oceano Profundo</div><div style="font-size:.7rem;color:var(--muted)">Azul marino + Teal</div></div><span class="tema-chk" id="chk-oceano">&#10003;</span></div>
+            </div>
+            <div class="tema-card" id="tema-bosque" onclick="aplicarTema('bosque')">
+              <div class="tema-preview"><div class="tema-sb" style="background:linear-gradient(180deg,#1B3A20,#2D5C34)"></div><div class="tema-body"><div class="tema-row hi" style="background:#2E8B47"></div><div class="tema-row"></div><div class="tema-row" style="width:75%"></div></div></div>
+              <div class="tema-label"><span class="tema-dot" style="background:linear-gradient(135deg,#1B3A20,#4CAF50)"></span><div><div style="font-weight:600;font-size:.82rem">Bosque Tropical</div><div style="font-size:.7rem;color:var(--muted)">Verde selva + Esmeralda</div></div><span class="tema-chk" id="chk-bosque"></span></div>
+            </div>
+            <div class="tema-card" id="tema-uv" onclick="aplicarTema('uv')">
+              <div class="tema-preview"><div class="tema-sb" style="background:linear-gradient(180deg,#2B1A6A,#3C2880)"></div><div class="tema-body"><div class="tema-row hi" style="background:#9B5BC8"></div><div class="tema-row"></div><div class="tema-row" style="width:75%"></div></div></div>
+              <div class="tema-label"><span class="tema-dot" style="background:linear-gradient(135deg,#2B1A6A,#9B5BC8)"></span><div><div style="font-weight:600;font-size:.82rem">Noche UV</div><div style="font-size:.7rem;color:var(--muted)">Morado UV + Lavanda</div></div><span class="tema-chk" id="chk-uv"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <div class="status-bar">
+    <span class="sb-ok">● Sistema activo</span>
+    <span id="sb-version">CITRO-Formularios v3.0</span>
+    <span id="sb-user-status" style="color:var(--muted)">Sin sesión</span>
+    <span style="margin-left:auto" id="sb-count">0 trámites</span>
+  </div>
+</div><!-- /main -->
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ============================================================
+//  CONFIGURACIÓN - editar si no se usa el panel de Config
+// ============================================================
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbw1yNdCPruK1AniFcgQRXA7n18GhpfXe1B_S3axOQZvVD2FzspkIOnTO6rMFCwLIeVkGQ/exec'; // pegar URL del Web App aquí
+const DEFAULT_SECRET  = 'citro2025';
+
+// ============================================================
+//  ESTADO
+// ============================================================
+const STORAGE_KEY    = 'citro_tramites_v3';
+const FOLIO_KEY      = 'citro_folios_v3';
+const CFG_KEY        = 'citro_config_v3';
+const ADMIN_CACHE_KEY= 'citro_admin_cache';
+const ADMIN_STAMP_KEY= 'citro_admin_stamp';
+
+function loadData()   { try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }catch{ return []; } }
+function saveData(d)  { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+function loadFolios() { try{ return JSON.parse(localStorage.getItem(FOLIO_KEY)||'{"PG":0,"SC":0,"PR":0,"OE":0}'); }catch{ return {PG:0,SC:0,PR:0,OE:0}; } }
+function saveFolios(f){ localStorage.setItem(FOLIO_KEY, JSON.stringify(f)); }
+function loadCfg(){try{var s=JSON.parse(localStorage.getItem(CFG_KEY)||'{}');if(DEFAULT_GAS_URL)s.gasUrl=DEFAULT_GAS_URL;if(DEFAULT_SECRET)s.secret=DEFAULT_SECRET;return s;}catch(e){return{};}}
+function saveCfg(c)   { localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
+
+let data       = loadData();
+let folios     = loadFolios();
+let cfg        = loadCfg();
+let currentUser= null;  // { email, name, picture, isAdmin }
+let adminData  = [];    // datos del servidor (solo admins)
+let isOnline   = false;
+
+const TYPE_LABELS   = {pg:'Petición General',sc:'Salida de Campo',pr:'Petición de Recursos',oe:'Organización de Evento'};
+const TYPE_PREFIXES = {pg:'PG',sc:'SC',pr:'PR',oe:'OE'};
+const TYPE_COLORS   = {pg:'var(--purple)',sc:'var(--green)',pr:'var(--orange)',oe:'var(--blue)'};
+const TYPE_ICONS    = {pg:'📩',sc:'🌿',pr:'📦',oe:'🎓'};
+
+// ============================================================
+//  AUTENTICACION POR CORREO (sin OAuth)
+// ============================================================
+const ADMIN_LIST = [
+  'carlolopez@uv.mx',
+  'jcfaicus@gmail.com',
+  'citroct7@gmail.com'
+];
+
+function isAdminEmail(email) {
+  return ADMIN_LIST.indexOf((email || '').toLowerCase().trim()) >= 0;
+}
+
+function isValidEmail(email) {
+  var e = (email || '').toLowerCase().trim();
+  // Admins: any domain
+  if(isAdminEmail(e)) return true;
+  // General users: @uv.mx or @estudiantes.uv.mx
+  return e.endsWith('@uv.mx') || e.endsWith('@estudiantes.uv.mx') || e.endsWith('@postdoc.uv.mx');
+}
+
+function doEmailLogin() {
+  var email  = (document.getElementById('login-email').value  || '').trim().toLowerCase();
+  var nombre = (document.getElementById('login-nombre').value || '').trim();
+  var errEl  = document.getElementById('loginError');
+
+  if(!nombre) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Por favor ingrese su nombre completo.';
+    document.getElementById('login-nombre').focus();
+    return;
+  }
+  if(!email) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Por favor ingrese su correo.';
+    document.getElementById('login-email').focus();
+    return;
+  }
+  if(!isValidEmail(email)) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Solo se permite acceso con correos @uv.mx, @estudiantes.uv.mx o los administradores autorizados.';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  var user = {
+    email:   email,
+    name:    nombre,
+    picture: '',
+    isAdmin: isAdminEmail(email),
+  };
+  sessionStorage.setItem('citro_user', JSON.stringify(user));
+  finishLogin(user);
+}
+
+function initGoogleSignIn() {
+  // Restaurar sesion guardada si existe
+  var savedUser = sessionStorage.getItem('citro_user');
+  if(savedUser) {
+    try { finishLogin(JSON.parse(savedUser)); } catch(e) {}
+  }
+}
+
+function finishLogin(user) {
+  currentUser = user;
+  sessionStorage.setItem('citro_user', JSON.stringify(user));
+
+  document.getElementById('loginOverlay').classList.add('hide');
+
+  var chip = document.getElementById('userChip');
+  chip.style.display = 'flex';
+  document.getElementById('userName').textContent = user.name.split(' ')[0];
+  document.getElementById('sb-user-status').textContent = user.email;
+
+  var av = document.getElementById('userAvatar');
+  av.textContent = user.name.charAt(0).toUpperCase();
+
+  var _cn=document.getElementById('nav-config-item');if(_cn)_cn.style.display=user.isAdmin?'':'none';
+  if(user.isAdmin) {
+    document.getElementById('userAdminBadge').style.display = 'inline';
+    document.querySelectorAll('.admin-only').forEach(function(el){ el.classList.add('show'); });
+    document.getElementById('sb-admin-section').classList.add('show');
+    setSyncStatus('on', 'Admin: ' + user.email);
+  } else {
+    setSyncStatus(isOnline ? 'on' : 'off', isOnline ? ('Conectado - ' + user.email) : ('Sin Drive - ' + user.email));
+  }
+
+  // Pre-fill correo fields with logged-in email
+  ['pg-correo','sc-correo','pr-correo','oe-correo'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && !el.value) el.value = user.email;
+  });
+
+  updateAllCounters();
+  renderDashboard();
+}
+
+function loginOffline() {
+  document.getElementById('loginError').style.display = 'none';
+  document.getElementById('loginOverlay').classList.add('hide');
+  setSyncStatus('off', 'Sin sesion - modo local');
+  document.getElementById('sb-user-status').textContent = 'Sin sesion';
+  updateAllCounters();
+  renderDashboard();
+}
+
+function logout() {
+  if(!confirm('Cerrar sesion?')) return;
+  currentUser = null;
+  sessionStorage.removeItem('citro_user');
+  document.getElementById('userChip').style.display = 'none';
+  document.getElementById('userAdminBadge').style.display = 'none';
+  document.querySelectorAll('.admin-only').forEach(function(el){ el.classList.remove('show'); });
+  // Clear login form
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-nombre').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  setSyncStatus('off', 'Sin conexion');
+  document.getElementById('loginOverlay').classList.remove('hide');
+}
+
+function setSyncStatus(state, label) {
+  var dot = document.getElementById('syncDot');
+  var lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+// ============================================================
+//  DRIVE + SHEETS - llamadas al backend GAS
+// ============================================================
+async function syncToDrive(record) {
+  const gasUrl = cfg.gasUrl || DEFAULT_GAS_URL;
+  const secret = cfg.secret || DEFAULT_SECRET;
+  if(!gasUrl) return { ok: false, skipped: true };
+
+  setSyncStatus('pending', 'Sincronizando...');
+  try {
+    const r = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'register',
+        secret,
+        record,
+        userEmail: currentUser ? currentUser.email : 'anónimo',
+      }),
+    });
+    const j = await r.json();
+    if(j.ok) {
+      isOnline = true;
+      setSyncStatus('on', `Guardado en Drive  -  ${new Date().toLocaleTimeString('es-MX')}`);
+      return { ok: true, driveUrl: j.driveUrl };
+    } else {
+      setSyncStatus('error', 'Error en servidor');
+      return { ok: false, error: j.error };
+    }
+  } catch(e) {
+    setSyncStatus('error', 'Sin conexión a Drive');
+    return { ok: false, error: e.message };
+  }
+}
+
+async function refreshAdminData(force=false) {
+  const gasUrl = cfg.gasUrl || DEFAULT_GAS_URL;
+  const secret = cfg.secret || DEFAULT_SECRET;
+  if(!currentUser || !currentUser.isAdmin || !gasUrl) {
+    document.getElementById('admin-empty').style.display='block';
+    return;
+  }
+
+  // Daily cache
+  const stamp = localStorage.getItem(ADMIN_STAMP_KEY);
+  const today = new Date().toISOString().split('T')[0];
+  if(!force && stamp === today) {
+    try {
+      adminData = JSON.parse(localStorage.getItem(ADMIN_CACHE_KEY)||'[]');
+      if(adminData.length) { renderAdminTable(); loadAdminStats(); loadAdminList(); return; }
+    } catch {}
+  }
+
+  const sp = document.getElementById('adminSpinner');
+  sp.style.display='block';
+  try {
+    const [rTramites, rStats, rAdmins] = await Promise.all([
+      fetch(`${gasUrl}?action=tramites&email=${encodeURIComponent(currentUser.email)}&secret=${encodeURIComponent(secret)}`),
+      fetch(`${gasUrl}?action=stats&email=${encodeURIComponent(currentUser.email)}&secret=${encodeURIComponent(secret)}`),
+      fetch(`${gasUrl}?action=admins&email=${encodeURIComponent(currentUser.email)}&secret=${encodeURIComponent(secret)}`),
+    ]);
+    const jT = await rTramites.json();
+    const jS = await rStats.json();
+    const jA = await rAdmins.json();
+
+    if(jT.ok) {
+      adminData = jT.data || [];
+      localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(adminData));
+      localStorage.setItem(ADMIN_STAMP_KEY, today);
+      renderAdminTable();
+    }
+    if(jS.ok) updateAdminStats(jS.data);
+    if(jA.ok) renderAdminList(jA.data);
+
+    document.getElementById('lastRefreshLbl').textContent = new Date().toLocaleTimeString('es-MX');
+    document.getElementById('nb-cloud').textContent = adminData.length;
+  } catch(e) {
+    showAdminMsg('error', 'Error al conectar con el servidor: '+e.message);
+  } finally {
+    sp.style.display='none';
+  }
+}
+
+// ============================================================
+//  NAVEGACIÓN
+// ============================================================
+const SCREEN_TITLES = {
+  's-inicio':   ['🏠 Inicio','Panel de control'],
+  's-tramites': ['📋 Mis Trámites','Historial completo'],
+  's-form':     ['📝 Nueva Solicitud','Formularios CITRO'],
+  's-admin':    ['🔐 Panel de Administración','Solo administradores'],
+  's-config':   [' Configuración','Ajustes del sistema'],
+};
+
+function nav(el) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  const sid = el.dataset.screen;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(sid).classList.add('active');
+  const t = SCREEN_TITLES[sid]||['CITRO',''];
+  document.getElementById('topbar-title').innerHTML =
+    t[0]+(t[1]?` <span class="topbar-sub">${t[1]}</span>`:'');
+  if(sid==='s-tramites') renderTable();
+  if(sid==='s-inicio')   renderDashboard();
+  if(sid==='s-admin')    refreshAdminData();
+  if(sid==='s-config'){if(!currentUser||!currentUser.isAdmin){showAlert('pg','error','Acceso restringido: solo administradores.');document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});document.getElementById('s-inicio').classList.add('active');return;}renderConfigStats();}
+}
+
+function navForm(el) {
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-form').classList.add('active');
+  const type = el.dataset.type;
+  switchForm(type, document.querySelector(`.form-tab[data-t="${type}"]`));
+  document.getElementById('topbar-title').innerHTML =
+    `📝 ${TYPE_ICONS[type]} ${TYPE_LABELS[type]} <span class="topbar-sub">Nueva solicitud</span>`;
+}
+
+function navFormDirect(type) {
+  navForm({dataset:{screen:'s-form',type},classList:{add(){},remove(){}}});
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.remove('active');
+    if(n.dataset.type===type) n.classList.add('active');
+  });
+}
+
+function switchForm(type, tabEl) {
+  document.querySelectorAll('.form-def').forEach(f=>f.style.display='none');
+  document.getElementById('form-'+type).style.display='block';
+  document.querySelectorAll('.form-tab').forEach(t=>t.classList.remove('active'));
+  if(tabEl) tabEl.classList.add('active');
+  else { const t=document.querySelector(`.form-tab[data-t="${type}"]`); if(t) t.classList.add('active'); }
+  updateFolioPreview(type);
+}
+
+// ============================================================
+//  FOLIO
+// ============================================================
+function previewFolio(type){ const p=TYPE_PREFIXES[type]; return `${p}-${new Date().getFullYear()}-${String((folios[p]||0)+1).padStart(3,'0')}`; }
+function assignFolio(type){ const p=TYPE_PREFIXES[type]; folios[p]=(folios[p]||0)+1; saveFolios(folios); return `${p}-${new Date().getFullYear()}-${String(folios[p]).padStart(3,'0')}`; }
+function updateFolioPreview(type){ const f=previewFolio(type); ['hdr','sb'].forEach(s=>{ const el=document.getElementById(`${type}-folio-${s}`); if(el) el.textContent=f; }); }
+
+// ============================================================
+//  SUBMIT
+// ============================================================
+const FORM_REQUIRED = {
+  pg:['pg-apellidos','pg-nombres','pg-matricula','pg-correo','pg-programa','pg-tipo','pg-descripcion','pg-fecha'],
+  sc:['sc-apellidos','sc-nombres','sc-grado','sc-matricula','sc-correo','sc-lugares','sc-actividades','sc-fecha-salida','sc-fecha-regreso'],
+  pr:['pr-apellidos','pr-nombres','pr-matricula','pr-actividad','pr-justificacion','pr-tipo','pr-fecha'],
+  oe:['oe-apellidos','oe-nombres','oe-matricula','oe-nombre','oe-fecha','oe-sede','oe-presupuesto','oe-asistentes','oe-proyecto','oe-lgac'],
+};
+
+function validate(type){ let ok=true; FORM_REQUIRED[type].forEach(id=>{ const el=document.getElementById(id); if(!el) return; if(!el.value.trim()){el.classList.add('err');ok=false;}else el.classList.remove('err'); }); return ok; }
+
+function buildRecord(type, folio) {
+  const g=id=>(document.getElementById(id)||{value:''}).value.trim();
+  const base={folio,type,label:TYPE_LABELS[type],fecha:new Date().toISOString(),estado:'Pendiente',apellidos:g(type+'-apellidos'),nombres:g(type+'-nombres'),matricula:g(type+'-matricula'),correo:g(type+'-correo'),driveUrl:''};
+  if(type==='pg') return{...base,programa:g('pg-programa'),director:g('pg-director'),tipo:g('pg-tipo'),urgencia:g('pg-urgencia'),descripcion:g('pg-descripcion'),adjuntos:g('pg-adjuntos'),obs:g('pg-obs'),fecha_sol:g('pg-fecha')};
+  if(type==='sc') return{...base,grado:g('sc-grado'),director:g('sc-director'),lugares:g('sc-lugares'),actividades:g('sc-actividades'),fecha_salida:g('sc-fecha-salida'),fecha_regreso:g('sc-fecha-regreso'),participantes:g('sc-participantes'),transporte:g('sc-transporte')};
+  if(type==='pr') return{...base,programa:g('pr-programa'),actividad:g('pr-actividad'),justificacion:g('pr-justificacion'),tipo_recurso:g('pr-tipo'),monto:g('pr-monto'),proyecto:g('pr-proyecto'),fecha_req:g('pr-fecha')};
+  if(type==='oe') return{...base,nombre_evento:g('oe-nombre'),fecha_evento:g('oe-fecha'),sede:g('oe-sede'),presupuesto:g('oe-presupuesto'),asistentes:g('oe-asistentes'),proyecto:g('oe-proyecto'),lgac:g('oe-lgac')};
+}
+
+// ============================================================
+//  ADJUNTOS
+// ============================================================
+var attachedFiles = { pg:[], sc:[], pr:[], oe:[] };
+
+function fmtSize(bytes){
+  if(bytes<1024) return bytes+'B';
+  if(bytes<1048576) return (bytes/1024).toFixed(0)+'KB';
+  return (bytes/1048576).toFixed(1)+'MB';
+}
+
+function fileIcon(name){
+  var ext=(name.split('.').pop()||'').toLowerCase();
+  if(['pdf'].includes(ext)) return '&#128196;';
+  if(['doc','docx'].includes(ext)) return '&#128196;';
+  if(['xls','xlsx'].includes(ext)) return '&#128202;';
+  if(['jpg','jpeg','png','gif'].includes(ext)) return '&#128247;';
+  return '&#128196;';
+}
+
+function renderAttachList(type){
+  var list=document.getElementById('al-'+type);
+  if(!list) return;
+  list.innerHTML='';
+  attachedFiles[type].forEach(function(f,i){
+    var item=document.createElement('div');
+    item.className='attach-item';
+    item.innerHTML=fileIcon(f.name)+'&nbsp;<span class="attach-item-name">'+f.name+'</span><span class="attach-item-sz">'+fmtSize(f.size)+'</span><button class="attach-item-rm" onclick="removeFile(\''+type+'\','+i+')" title="Quitar">&#10005;</button>';
+    list.appendChild(item);
+  });
+}
+
+function handleFiles(files, type){
+  var maxBytes=10*1024*1024;
+  Array.from(files).forEach(function(f){
+    if(f.size>maxBytes){ alert('El archivo "'+f.name+'" supera 10 MB y no se adjunto.'); return; }
+    if(attachedFiles[type].length>=8){ alert('Maximo 8 archivos por tramite.'); return; }
+    attachedFiles[type].push(f);
+  });
+  renderAttachList(type);
+  // reset input so same file can be re-added after removal
+  var inp=document.getElementById('af-'+type);
+  if(inp) inp.value='';
+}
+
+function handleDrop(event, type){
+  event.preventDefault();
+  var az=document.getElementById('az-'+type);
+  if(az) az.classList.remove('drag-over');
+  handleFiles(event.dataTransfer.files, type);
+}
+
+function removeFile(type, idx){
+  attachedFiles[type].splice(idx,1);
+  renderAttachList(type);
+}
+
+// ============================================================
+//  EMAIL  (via GAS backend o mailto fallback)
+// ============================================================
+var CITRO_EMAIL = 'citroct7@gmail.com';
+
+function buildEmailBody(record, type){
+  var sep = '================================================';
+  var lines = [
+    sep,
+    '  SOLICITUD CITRO / Universidad Veracruzana',
+    sep,
+    '',
+    'Folio:         ' + record.folio,
+    'Tipo:          ' + record.label,
+    'Solicitante:   ' + record.apellidos + ', ' + record.nombres,
+    'Matricula/Numero de Personal:  ' + record.matricula,
+    'Correo:        ' + (record.correo || ''),
+    'Fecha:         ' + new Date(record.fecha).toLocaleString('es-MX'),
+    '',
+    '--- CONTENIDO DE LA SOLICITUD ---',
+    '',
+  ];
+  if(type==='pg'){
+    lines.push('Tipo de peticion: '+(record.tipo||''));
+    lines.push('Urgencia:         '+(record.urgencia||''));
+    lines.push('');
+    lines.push('Descripcion:');
+    lines.push(record.descripcion||'');
+    if(record.obs){ lines.push(''); lines.push('Observaciones: '+record.obs); }
+  } else if(type==='sc'){
+    lines.push('Grado:            '+(record.grado||''));
+    lines.push('Director:         '+(record.director||''));
+    lines.push('');
+    lines.push('Lugar(es):');
+    lines.push(record.lugares||'');
+    lines.push('');
+    lines.push('Actividades:');
+    lines.push(record.actividades||'');
+    lines.push('');
+    lines.push('Fecha de salida:  '+(record.fecha_salida||''));
+    lines.push('Fecha de regreso: '+(record.fecha_regreso||''));
+    if(record.participantes){ lines.push('Participantes:    '+record.participantes); }
+    if(record.transporte)   { lines.push('Transporte:       '+record.transporte); }
+  } else if(type==='pr'){
+    lines.push('Actividad:        '+(record.actividad||''));
+    lines.push('Tipo de recurso:  '+(record.tipo_recurso||''));
+    if(record.monto){ lines.push('Monto estimado:   $'+parseFloat(record.monto||0).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN'); }
+    if(record.proyecto){ lines.push('Proyecto/Cuenta:  '+record.proyecto); }
+    lines.push('');
+    lines.push('Justificacion:');
+    lines.push(record.justificacion||'');
+  } else if(type==='oe'){
+    lines.push('Evento:      '+(record.nombre_evento||''));
+    lines.push('Fecha:       '+(record.fecha_evento||''));
+    lines.push('Sede:        '+(record.sede||''));
+    lines.push('Presupuesto: $'+parseFloat(record.presupuesto||0).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN');
+    lines.push('Asistentes:  '+(record.asistentes||''));
+    lines.push('Proyecto:    '+(record.proyecto||''));
+    lines.push('');
+    lines.push('LGAC/PLADEA:');
+    lines.push(record.lgac||'');
+  }
+  lines.push('', sep);
+  lines.push('CITRO-Formularios v4 | Universidad Veracruzana');
+  lines.push(sep);
+  return lines.join('\n');
+}
+
+// Texto del acuse para el solicitante
+function buildAcuseBody(record, files){
+  var sep = '================================================';
+  var lines = [
+    sep,
+    '  ACUSE DE RECIBO - SOLICITUD REGISTRADA',
+    '  CITRO / Universidad Veracruzana',
+    sep,
+    '',
+    'Su solicitud ha sido registrada exitosamente.',
+    '',
+    'Folio asignado:  ' + record.folio,
+    'Tipo:            ' + record.label,
+    'Solicitante:     ' + record.apellidos + ', ' + record.nombres,
+    'Matricula/Numero de Personal:    ' + record.matricula,
+    'Fecha:           ' + new Date(record.fecha).toLocaleString('es-MX'),
+    '',
+  ];
+  if(files && files.length){
+    lines.push('Archivos adjuntos (' + files.length + '):');
+    files.forEach(function(f,i){ lines.push('  ' + (i+1) + '. ' + f.name + ' (' + fmtSize(f.size) + ')'); });
+    lines.push('');
+  }
+  lines.push('IMPORTANTE:');
+  lines.push('Este correo es su comprobante de registro.');
+  lines.push('Conserve el numero de folio: ' + record.folio);
+  lines.push('La coordinacion CITRO procesara su solicitud en los proximos dias habiles.');
+  lines.push('');
+  lines.push(sep);
+  lines.push('CITRO-Formularios v4 | Universidad Veracruzana');
+  lines.push('Centro de Investigaciones Tropicales');
+  lines.push(sep);
+  return lines.join('\n');
+}
+
+// Dispara correo a CtTramites con CC al solicitante (un solo mailto)
+function abrirCorreoCompleto(record, type, files){
+  var subject = '[CITRO] ' + record.label + ' - Folio ' + record.folio + ' - ' + record.apellidos + ', ' + record.nombres;
+  var body = buildEmailBody(record, type);
+
+  if(files && files.length){
+    body += '\n\n--- ARCHIVOS ADJUNTOS (' + files.length + ') ---\n';
+    files.forEach(function(f,i){ body += '  ' + (i+1) + '. ' + f.name + ' (' + fmtSize(f.size) + ')\n'; });
+    body += '\n[Adjunte el archivo ' + record.folio + '_CITRO.zip descargado del sistema]';
+  }
+
+  var url = 'mailto:' + encodeURIComponent(CITRO_EMAIL);
+  url += '?subject=' + encodeURIComponent(subject);
+  url += '&body=' + encodeURIComponent(body);
+  if(record.correo){ url += '&cc=' + encodeURIComponent(record.correo); }
+
+  window.open(url, '_blank');
+}
+
+// Abre correo de acuse SOLO al solicitante
+function abrirAcuseSolicitante(record, files){
+  if(!record.correo){ alert('No hay correo del solicitante en esta solicitud.'); return; }
+  var subject = '[CITRO] Acuse de recibo - Folio ' + record.folio;
+  var body = buildAcuseBody(record, files);
+  var url = 'mailto:' + encodeURIComponent(record.correo)
+          + '?subject=' + encodeURIComponent(subject)
+          + '&body=' + encodeURIComponent(body);
+  window.open(url, '_blank');
+}
+
+// ============================================================
+//  ACUSE DE RECIBO + ZIP + CORREOS
+// ============================================================
+var _lastAcuseType   = 'pg';
+var _lastAcuseRecord = null;
+var _lastAcuseFiles  = [];
+
+function showAcuse(record, type, files, emailStatus) {
+  _lastAcuseType   = type;
+  _lastAcuseRecord = record;
+  _lastAcuseFiles  = files || [];
+
+  // Datos principales
+  document.getElementById('acuse-folio-num').textContent   = record.folio;
+  document.getElementById('acuse-tipo').textContent        = record.label;
+  document.getElementById('acuse-solicitante').textContent = record.apellidos + ', ' + record.nombres;
+  document.getElementById('acuse-matricula').textContent   = record.matricula;
+  document.getElementById('acuse-fecha').textContent = new Date(record.fecha)
+    .toLocaleString('es-MX', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
+
+  // Adjuntos
+  var adjBox = document.getElementById('acuse-adj-box');
+  if(files.length){
+    document.getElementById('acuse-adjuntos').textContent = files.length + ' archivo(s)';
+    document.getElementById('acuse-adj-lista').innerHTML  =
+      '<strong>En el paquete .zip:</strong><br>' +
+      files.map(function(f){ return '&#128196; ' + f.name + ' (' + fmtSize(f.size) + ')'; }).join('<br>');
+    adjBox.style.display = 'flex';
+    document.getElementById('acuse-zip-desc').innerHTML =
+      'Formulario + <strong>' + files.length + ' adjunto(s)</strong> en un solo archivo.';
+  } else {
+    document.getElementById('acuse-adjuntos').textContent = 'Ninguno';
+    adjBox.style.display = 'none';
+    document.getElementById('acuse-zip-desc').innerHTML = 'Formulario completo listo para imprimir.';
+  }
+
+  // Estado de correos
+  var via = emailStatus ? emailStatus.via : 'mailto';
+  _setEmailStatus(
+    'citro',
+    emailStatus && emailStatus.citro,
+    via === 'GAS' ? 'Enviado via servidor' : 'Abrir cliente de correo para enviar',
+    via
+  );
+  _setEmailStatus(
+    'sol',
+    emailStatus && emailStatus.solicitante,
+    via === 'GAS' ? 'Acuse enviado a ' + (record.correo || 'solicitante') : (record.correo || 'Sin correo registrado'),
+    via,
+    record.correo
+  );
+
+  // Solicitante destino label
+  document.getElementById('acuse-st-sol-dest').textContent =
+    record.correo ? record.correo : '(sin correo registrado)';
+
+  // Reset ZIP button
+  var btn = document.getElementById('btn-download-zip');
+  btn.innerHTML = '&#8595; Descargar paquete .zip';
+  btn.disabled = false;
+  btn.style.background = '';
+  document.getElementById('zip-progress').style.display = 'none';
+
+  // Timestamp
+  var now = new Date();
+  document.getElementById('acuse-ts').textContent =
+    'Registrado: ' + now.toLocaleDateString('es-MX') + '  ' + now.toLocaleTimeString('es-MX') + '  |  CITRO v4';
+
+  document.getElementById('acuse-overlay').classList.add('show');
+}
+
+function _setEmailStatus(which, sent, txt, via, dest) {
+  var icoEl  = document.getElementById('acuse-st-' + which + '-ico');
+  var txtEl  = document.getElementById('acuse-st-' + which + '-txt');
+  var rowEl  = document.getElementById('acuse-st-' + which);
+  if(!icoEl) return;
+  if(sent){
+    icoEl.textContent = '\u2713';
+    icoEl.style.color = 'var(--green)';
+    txtEl.textContent = txt;
+    rowEl.style.borderColor = 'rgba(26,122,74,.3)';
+    rowEl.style.background  = 'rgba(26,122,74,.04)';
+  } else {
+    icoEl.innerHTML = via === 'mailto' ? '&#128231;' : '&#9888;';
+    icoEl.style.color = via === 'mailto' ? 'var(--blue)' : 'var(--amber)';
+    txtEl.textContent = txt;
+    rowEl.style.borderColor = via === 'mailto' ? 'rgba(27,95,168,.22)' : 'rgba(232,146,10,.28)';
+    rowEl.style.background  = via === 'mailto' ? 'rgba(27,95,168,.04)' : 'rgba(232,146,10,.04)';
+  }
+}
+
+function cerrarAcuse() {
+  document.getElementById('acuse-overlay').classList.remove('show');
+}
+
+function acuseNuevo() {
+  cerrarAcuse();
+  resetForm(_lastAcuseType);
+  attachedFiles[_lastAcuseType] = [];
+  renderAttachList(_lastAcuseType);
+  document.querySelector('.content').scrollTo({top:0, behavior:'smooth'});
+}
+
+// Reenviar manualmente
+function manualCorreoCITRO() {
+  if(!_lastAcuseRecord) return;
+  abrirCorreoCompleto(_lastAcuseRecord, _lastAcuseType, _lastAcuseFiles);
+}
+function manualAcuseSolicitante() {
+  if(!_lastAcuseRecord) return;
+  abrirAcuseSolicitante(_lastAcuseRecord, _lastAcuseFiles);
+}
+
+// Imprimir acuse
+function acuseImprimir() {
+  var folio = document.getElementById('acuse-folio-num').textContent;
+  var tipo  = document.getElementById('acuse-tipo').textContent;
+  var sol   = document.getElementById('acuse-solicitante').textContent;
+  var mat   = document.getElementById('acuse-matricula').textContent;
+  var fecha = document.getElementById('acuse-fecha').textContent;
+  var adj   = document.getElementById('acuse-adjuntos').textContent;
+  var ts    = document.getElementById('acuse-ts').textContent;
+  var correo = _lastAcuseRecord ? (_lastAcuseRecord.correo || '') : '';
+  var adjList = _lastAcuseFiles.map(function(f){
+    return '<li>' + f.name + ' <span style="color:#aaa">(' + fmtSize(f.size) + ')</span></li>';
+  }).join('');
+
+  var w = window.open('','_blank','width=620,height=760');
+  w.document.write(
+    '<!doctype html><html><head><meta charset="utf-8"><title>Acuse - ' + folio + '</title>' +
+    '<style>body{font-family:Arial,sans-serif;margin:1.8cm;color:#111;font-size:11pt}' +
+    'h1{color:#0D1F3C;font-size:13pt;border-bottom:2px solid #0D1F3C;padding-bottom:6px}' +
+    '.folio{font-size:20pt;font-weight:bold;color:#0A7A6E;text-align:center;' +
+    'border:2px solid #0A7A6E;padding:10px;border-radius:8px;margin:14px 0;letter-spacing:.04em}' +
+    '.row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:7px 0}' +
+    '.lbl{color:#777;font-size:.9em}.val{font-weight:600}' +
+    '.note{margin-top:16px;background:#f0faf8;border:1px solid #0A7A6E;border-radius:6px;' +
+    'padding:10px;font-size:.85em;color:#0A7A6E;line-height:1.55}' +
+    '.footer{margin-top:24px;font-size:8pt;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:10px}' +
+    '@media print{body{margin:1.2cm}}
+/* TEMAS */
+[data-theme=oceano]{--navy:#0D1F3C;--navy2:#16325A;--teal:#0A7A6E;--teal2:#0DB8A8;}
+[data-theme=bosque]{--navy:#1B3A20;--navy2:#2D5C34;--teal:#2E8B47;--teal2:#4CAF50;--amber:#C8960A;--surf:#F2FAF4;--surf2:#E0F0E4;--border:#B4D4BA;}
+[data-theme=uv]{--navy:#2B1A6A;--navy2:#3C2880;--teal:#6830A8;--teal2:#9B5BC8;--surf:#F4F1FA;--surf2:#EAE3F5;--border:#CEC4E8;}
+.tema-card{border:2px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:.18s;user-select:none;}
+.tema-card:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.13);}
+.tema-card.activo{border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,122,110,.2);}
+.tema-preview{height:64px;display:flex;overflow:hidden;}
+.tema-sb{width:24px;}
+.tema-body{flex:1;background:#fff;padding:9px 11px;}
+.tema-row{height:5px;border-radius:2px;margin-bottom:5px;background:#dde4f0;}
+.tema-row.hi{height:8px;width:55%;}
+.tema-label{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surf);}
+.tema-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.tema-chk{margin-left:auto;font-weight:700;color:var(--teal);font-size:.9rem;}
+</style></head><body>' +
+    '<h1>Acuse de Recibo - CITRO / UV</h1>' +
+    '<div class="folio">Folio: ' + folio + '</div>' +
+    '<div class="row"><span class="lbl">Tipo de tramite</span><span class="val">' + tipo + '</span></div>' +
+    '<div class="row"><span class="lbl">Solicitante</span><span class="val">' + sol + '</span></div>' +
+    '<div class="row"><span class="lbl">Matricula UV</span><span class="val">' + mat + '</span></div>' +
+    '<div class="row"><span class="lbl">Correo</span><span class="val">' + correo + '</span></div>' +
+    '<div class="row"><span class="lbl">Fecha de registro</span><span class="val">' + fecha + '</span></div>' +
+    '<div class="row"><span class="lbl">Archivos adjuntos</span><span class="val">' + adj + '</span></div>' +
+    (adjList ? '<ul style="margin:6px 0 0 16px;font-size:.85em;color:#444">' + adjList + '</ul>' : '') +
+    '<div class="row"><span class="lbl">Destino</span><span class="val">citroct7@gmail.com</span></div>' +
+    '<div class="note">&#10003; Solicitud registrada en el sistema CITRO.<br>' +
+    'Conserve este folio como comprobante: <strong>' + folio + '</strong><br>' +
+    'La coordinacion procesara su solicitud en los proximos dias habiles.</div>' +
+    '<div class="footer">' + ts + '</div>' +
+    '</body></html>'
+  );
+  w.document.close();
+  setTimeout(function(){if(typeof html2pdf!=='undefined'){html2pdf().set({margin:[12,15,12,15],filename:folio+'_acuse_CITRO.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(w.document.body).save().then(function(){w.close();});}else{w.print();}},350);
+}
+
+// Descarga ZIP
+async function descargarPaqueteZip() {
+  if(!_lastAcuseRecord) return;
+  var btn  = document.getElementById('btn-download-zip');
+  var prog = document.getElementById('zip-progress');
+  btn.disabled = true;
+  btn.innerHTML = 'Generando...';
+  prog.style.display = 'block';
+  prog.textContent   = 'Preparando paquete...';
+
+  try {
+    var zip     = new JSZip();
+    var record  = _lastAcuseRecord;
+    var files   = _lastAcuseFiles;
+    var folio   = record.folio;
+    var carpeta = folio + '_' + record.apellidos.split(' ')[0];
+
+    // Formulario oficial HTML
+    zip.file(carpeta + '/' + folio + '_formulario.html', buildPrintHTML(record, _lastAcuseType));
+
+    // Acuse de recibo TXT
+    zip.file(carpeta + '/' + folio + '_acuse.txt', buildAcuseBody(record, files));
+
+    // Adjuntos del usuario
+    for(var i = 0; i < files.length; i++){
+      prog.textContent = 'Empaquetando adjunto ' + (i+1) + ' de ' + files.length + '...';
+      var ab = await files[i].arrayBuffer();
+      zip.file(carpeta + '/adjuntos/' + files[i].name, ab);
+    }
+
+    prog.textContent = 'Comprimiendo...';
+    var blob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = folio + '_CITRO.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+
+    btn.innerHTML = '\u2713 Descargado: ' + folio + '_CITRO.zip';
+    btn.style.background = 'var(--green)';
+    prog.textContent = 'Adjunte el .zip al correo a citroct7@gmail.com.';
+
+  } catch(err) {
+    btn.disabled = false;
+    btn.innerHTML = '&#8595; Descargar paquete .zip';
+    prog.textContent = 'Error: ' + err.message;
+  }
+}
+
+
+// ============================================================
+//  SUBMIT
+// ============================================================
+async function submitForm(type) {
+  if(!validate(type)) { showAlert(type,'error','Complete todos los campos obligatorios (*)'); return; }
+
+  var btn = document.getElementById('btn-submit-'+type);
+  btn.disabled = true;
+  btn.innerHTML = '<span style="animation:spin .8s linear infinite;display:inline-block">&#8635;</span> Registrando...';
+
+  var folio  = assignFolio(type);
+  var record = buildRecord(type, folio);
+  var files  = attachedFiles[type] || [];
+
+  // 1. Sincronizar con Drive / Sheets (si esta configurado)
+  var gasUrl = cfg.gasUrl || DEFAULT_GAS_URL;
+  if(gasUrl) {
+    btn.innerHTML = '<span style="animation:spin .8s linear infinite;display:inline-block">&#8635;</span> Guardando en Drive...';
+    var result = await syncToDrive(record);
+    if(result.ok) { record.driveUrl = result.driveUrl || ''; }
+  }
+
+  // 2. Guardar localmente
+  data.push(record);
+  saveData(data);
+  updateAllCounters();
+  updateFolioPreview(type);
+
+  // 3. Intentar envio GAS (si configurado); si no, se usa mailto desde acuse
+  var emailStatus = {citro: false, solicitante: false, via: 'mailto'};
+  if(gasUrl) {
+    btn.innerHTML = '<span style="animation:spin .8s linear infinite;display:inline-block">&#8635;</span> Enviando correo...';
+    try {
+      var attachData = [];
+      for(var i=0; i<files.length; i++){
+        var f = files[i];
+        var b64 = await new Promise(function(res){
+          var r = new FileReader();
+          r.onload = function(e){ res(e.target.result.split(',')[1]); };
+          r.onerror = function(){ res(''); };
+          r.readAsDataURL(f);
+        });
+        attachData.push({name: f.name, type: f.type, data: b64});
+      }
+      var payload = {
+        action: 'sendEmail', secret: cfg.secret || DEFAULT_SECRET,
+        to: CITRO_EMAIL, cc: record.correo || '',
+        folio: record.folio, tipo: record.label,
+        solicitante: record.apellidos + ', ' + record.nombres,
+        matricula: record.matricula, correo: record.correo || '',
+        body: buildEmailBody(record, type),
+        acuseBody: buildAcuseBody(record, files),
+        printHtml: buildPrintHTML(record, type),
+        attachments: attachData
+      };
+      var resp = await fetch(gasUrl, {method:'POST', headers:{'Content-Type': 'text/plain'}, body: JSON.stringify(payload)});
+      var j = await resp.json();
+      if(j.ok){ emailStatus = {citro: true, solicitante: true, via: 'GAS'}; }
+    } catch(e){ /* fallback to mailto in acuse */ }
+  }
+
+  // 4. Si no hay GAS, abrir mailto automaticamente al terminar
+  if(emailStatus.via !== 'GAS'){
+    // Abrir correo a CtTramites con CC al solicitante
+    abrirCorreoCompleto(record, type, files);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '&#8595; Registrar + Enviar';
+
+  // 5. Mostrar acuse de recibo
+  showAcuse(record, type, files, emailStatus);
+}
+
+
+function showAlert(type, kind, msg) {
+  const el=document.getElementById(type+'-alert');
+  const m=document.getElementById(type+'-alert-msg');
+  el.className=`alert alert-${kind} show`;
+  m.textContent=msg;
+  setTimeout(()=>el.classList.remove('show'),7000);
+}
+
+function resetForm(type) {
+  document.querySelectorAll(`#form-${type} input,#form-${type} select,#form-${type} textarea`).forEach(el=>{el.value='';el.classList.remove('err');});
+  const today=new Date().toISOString().split('T')[0];
+  ['pg-fecha','sc-fecha-salida','sc-fecha-regreso','pr-fecha','oe-fecha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+  const a=document.getElementById(type+'-alert'); if(a) a.classList.remove('show');
+}
+
+// ============================================================
+//  TABLA MIS TRÁMITES
+// ============================================================
+function renderTable() {
+  const q=((document.getElementById('q-search')||{}).value||'').toLowerCase();
+  const tF=(document.getElementById('q-tipo')||{}).value||'';
+  const sF=(document.getElementById('q-estado')||{}).value||'';
+  let rows=[...data].reverse().filter(r=>{
+    const matchQ=!q||JSON.stringify(r).toLowerCase().includes(q);
+    const matchT=!tF||r.type===tF;
+    const matchS=!sF||r.estado===sF;
+    return matchQ&&matchT&&matchS;
+  });
+  const tbody=document.getElementById('table-body');
+  const empty=document.getElementById('table-empty');
+  tbody.innerHTML='';
+  if(!rows.length){empty.style.display='block';document.getElementById('main-table').style.display='none';return;}
+  empty.style.display='none';
+  document.getElementById('main-table').style.display='table';
+  const estadoMap={'Pendiente':'badge-pending','En revisión':'badge-review','Completado':'badge-done','Cancelado':'badge-canceled'};
+  rows.forEach((r,i)=>{
+    const ds=new Date(r.fecha).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const driveCell=r.driveUrl?`<a class="drive-link" href="${r.driveUrl}" target="_blank">📄 Drive</a>`:`<span style="color:var(--border);font-size:.72rem">-</span>`;
+    tbody.innerHTML+=`<tr>
+      <td><span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--teal);font-weight:600">${r.folio}</span></td>
+      <td><span style="font-size:.72rem">${TYPE_ICONS[r.type]} ${r.label}</span></td>
+      <td>${r.apellidos}, ${r.nombres}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.75rem">${r.matricula}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${ds}</td>
+      <td><span class="badge ${estadoMap[r.estado]||'badge-new'}">${r.estado}</span></td>
+      <td>${driveCell}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost btn-sm" onclick="changeStatus(${data.length-1-i})" title="Cambiar estado"></button>
+        <button class="btn btn-ghost btn-sm" onclick="printRecord(${data.length-1-i})" title="Imprimir">🖨</button>
+        <button class="btn btn-ghost btn-sm" onclick="deleteRecord(${data.length-1-i})" title="Eliminar">🗑</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function changeStatus(idx) {
+  const estados=['Pendiente','En revisión','Completado','Cancelado'];
+  const curr=data[idx].estado;
+  data[idx].estado=estados[(estados.indexOf(curr)+1)%estados.length];
+  saveData(data);
+  // Sync status change to sheets
+  syncStatusUpdate(data[idx].folio, data[idx].estado);
+  renderTable();
+  updateAllCounters();
+}
+
+async function syncStatusUpdate(folio, estado) {
+  const gasUrl=cfg.gasUrl||DEFAULT_GAS_URL;
+  const secret=cfg.secret||DEFAULT_SECRET;
+  if(!gasUrl) return;
+  try {
+    await fetch(gasUrl,{method:'POST',headers:{'Content-Type': 'text/plain'},body:JSON.stringify({action:'updateStatus',secret,folio,estado,requestedBy:currentUser?currentUser.email:''})});
+  } catch{}
+}
+
+function deleteRecord(idx) {
+  if(!confirm(`¿Eliminar ${data[idx].folio}?`)) return;
+  data.splice(idx,1);
+  saveData(data);
+  renderTable();
+  updateAllCounters();
+}
+
+function printRecord(idx) { printFormFromRecord(data[data.length-1-idx]||data[idx]); }
+
+// ============================================================
+//  ADMIN TABLE
+// ============================================================
+function renderAdminTable() {
+  const q=((document.getElementById('adm-search')||{}).value||'').toLowerCase();
+  const tF=((document.getElementById('adm-tipo')||{}).value)||'';
+  const sF=((document.getElementById('adm-estado')||{}).value)||'';
+  let rows=[...adminData].reverse().filter(r=>{
+    const str=JSON.stringify(Object.values(r)).toLowerCase();
+    const matchQ=!q||str.includes(q);
+    const matchT=!tF||(r['Tipo']||'').includes(tF);
+    const matchS=!sF||r['Estado']===sF;
+    return matchQ&&matchT&&matchS;
+  });
+  const tbody=document.getElementById('admin-tbody');
+  const empty=document.getElementById('admin-empty');
+  tbody.innerHTML='';
+  if(!rows.length){empty.style.display='block';document.getElementById('admin-table').style.display='none';return;}
+  empty.style.display='none';
+  document.getElementById('admin-table').style.display='table';
+  const estadoMap={'Pendiente':'badge-pending','En revisión':'badge-review','Completado':'badge-done','Cancelado':'badge-canceled'};
+  rows.forEach(r=>{
+    const driveCell=r['URL Drive']?`<a class="drive-link" href="${r['URL Drive']}" target="_blank">📄 Abrir</a>`:'-';
+    tbody.innerHTML+=`<tr>
+      <td><span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--teal);font-weight:600">${r['Folio']||''}</span></td>
+      <td style="font-size:.78rem">${r['Tipo']||''}</td>
+      <td>${r['Apellidos']||''}, ${r['Nombres']||''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:.72rem">${r['Matrícula']||''}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${r['Correo']||''}</td>
+      <td style="font-size:.72rem;color:var(--muted)">${r['Fecha Registro']||''}</td>
+      <td><span class="badge ${estadoMap[r['Estado']]||'badge-new'}">${r['Estado']||'-'}</span></td>
+      <td>${driveCell}</td>
+      <td><select style="font-size:.72rem;padding:3px 6px;border-radius:4px;border:1px solid var(--border)" onchange="adminChangeStatus('${r['Folio']}',this.value)">
+        <option ${r['Estado']==='Pendiente'?'selected':''}>Pendiente</option>
+        <option ${r['Estado']==='En revisión'?'selected':''}>En revisión</option>
+        <option ${r['Estado']==='Completado'?'selected':''}>Completado</option>
+        <option ${r['Estado']==='Cancelado'?'selected':''}>Cancelado</option>
+      </select></td>
+    </tr>`;
+  });
+}
+
+function adminChangeStatus(folio, estado) {
+  syncStatusUpdate(folio, estado);
+  const idx=adminData.findIndex(r=>r['Folio']===folio);
+  if(idx>-1) adminData[idx]['Estado']=estado;
+  localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(adminData));
+  updateAdminStats();
+}
+
+function updateAdminStats(stats) {
+  if(stats) {
+    document.getElementById('adm-total').textContent = stats.total||0;
+    document.getElementById('adm-pend').textContent  = stats.pendientes||0;
+    document.getElementById('adm-done').textContent  = stats.completados||0;
+    document.getElementById('adm-hoy').textContent   = stats.hoy||0;
+  } else {
+    // Compute from local adminData
+    const today=new Date().toLocaleDateString('es-MX');
+    document.getElementById('adm-total').textContent = adminData.length;
+    document.getElementById('adm-pend').textContent  = adminData.filter(r=>r['Estado']==='Pendiente').length;
+    document.getElementById('adm-done').textContent  = adminData.filter(r=>r['Estado']==='Completado').length;
+    document.getElementById('adm-hoy').textContent   = adminData.filter(r=>(r['Fecha Registro']||'').includes(today.split('/')[0])).length;
+  }
+  document.getElementById('nb-cloud').textContent = adminData.length;
+}
+
+function renderAdminList(admins) {
+  const el=document.getElementById('admins-list');
+  if(!admins||!admins.length){ el.innerHTML='<span style="color:var(--muted);font-size:.78rem">Sin admins cargados</span>'; return; }
+  el.innerHTML=admins.map(a=>`
+    <div style="display:flex;align-items:center;gap:8px;background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:6px 12px">
+      <span style="font-size:.82rem;font-weight:600;color:var(--navy)">${a['Email']||''}</span>
+      ${a['Nombre']?`<span style="font-size:.72rem;color:var(--muted)">${a['Nombre']}</span>`:''}
+      <span class="tag-admin">ADMIN</span>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:.68rem;padding:2px 8px;color:var(--red)" onclick="removeAdmin('${a['Email']}')">x</button>
+    </div>`).join('');
+}
+
+async function addAdmin() {
+  const email=document.getElementById('new-admin-email').value.trim();
+  const nombre=document.getElementById('new-admin-nombre').value.trim();
+  if(!email||!email.includes('@')){ showAdminMsg('error','Ingrese un email válido'); return; }
+  const gasUrl=cfg.gasUrl||DEFAULT_GAS_URL;
+  const secret=cfg.secret||DEFAULT_SECRET;
+  if(!gasUrl){ showAdminMsg('error','Configure el URL del servidor primero'); return; }
+  try {
+    const r=await fetch(gasUrl,{method:'POST',headers:{'Content-Type': 'text/plain'},body:JSON.stringify({action:'addAdmin',secret,email,nombre,requestedBy:currentUser.email})});
+    const j=await r.json();
+    if(j.ok){ showAdminMsg('success',`OK ${email} agregado como administrador`); document.getElementById('new-admin-email').value=''; document.getElementById('new-admin-nombre').value=''; refreshAdminData(true); }
+    else showAdminMsg('error', j.error||'Error al agregar');
+  } catch(e){ showAdminMsg('error','Error de conexión: '+e.message); }
+}
+
+async function removeAdmin(email) {
+  if(!confirm(`¿Quitar acceso admin a ${email}?`)) return;
+  const gasUrl=cfg.gasUrl||DEFAULT_GAS_URL;
+  const secret=cfg.secret||DEFAULT_SECRET;
+  try {
+    const r=await fetch(gasUrl,{method:'POST',headers:{'Content-Type': 'text/plain'},body:JSON.stringify({action:'removeAdmin',secret,email,requestedBy:currentUser.email})});
+    const j=await r.json();
+    if(j.ok){ showAdminMsg('success',`OK ${email} removido`); refreshAdminData(true); }
+    else showAdminMsg('error',j.error||'Error al remover');
+  } catch(e){ showAdminMsg('error',e.message); }
+}
+
+function showAdminMsg(kind, msg) {
+  const el=document.getElementById('admin-msg');
+  el.className=`alert alert-${kind} show`;
+  el.innerHTML=`<span>${msg}</span>`;
+  setTimeout(()=>el.classList.remove('show'),7000);
+}
+
+function exportAdminCSV() {
+  if(!adminData.length){ alert('Sin datos admin'); return; }
+  const headers=Object.keys(adminData[0]);
+  const rows=[headers,...adminData.map(r=>headers.map(h=>r[h]||''))];
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`CITRO_Admin_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const total=data.length,pend=data.filter(r=>r.estado==='Pendiente').length,done=data.filter(r=>r.estado==='Completado').length;
+  const today_str=new Date().toISOString().split('T')[0];
+  const todayCount=data.filter(r=>r.fecha.startsWith(today_str)).length;
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-pend').textContent=pend;
+  document.getElementById('st-done').textContent=done;
+  document.getElementById('st-today').textContent=todayCount;
+  document.getElementById('st-date-lbl').textContent=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'short'});
+  const tl=document.getElementById('dash-timeline'),emp=document.getElementById('dash-empty');
+  if(!data.length){emp.style.display='block';tl.innerHTML='';tl.appendChild(emp);return;}
+  emp.style.display='none';
+  const recent=[...data].reverse().slice(0,5);
+  tl.innerHTML='<div class="timeline">'+recent.map(r=>{
+    const time=new Date(r.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    const cls=r.estado==='Completado'?'done':r.driveUrl?'cloud':'new';
+    const driveTag=r.driveUrl?`<a href="${r.driveUrl}" target="_blank" style="font-size:.68rem;color:var(--teal);margin-left:6px">📄 Drive</a>`:'';
+    return `<div class="tl-item ${cls}"><div class="tl-time">${time}</div><div class="tl-text"><strong>${TYPE_ICONS[r.type]} ${r.label}</strong> - ${r.apellidos}, ${r.nombres}  -  <span style="font-family:'IBM Plex Mono',monospace;color:var(--teal);font-size:.72rem">${r.folio}</span>${driveTag}</div></div>`;
+  }).join('')+'</div>';
+  const types=['pg','sc','pr','oe'];
+  const typeBars=document.getElementById('type-bars');
+  if(!data.length){typeBars.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:.78rem">Sin datos</div>';return;}
+  typeBars.innerHTML=types.map(t=>{
+    const cnt=data.filter(r=>r.type===t).length;
+    const pct=total?Math.round(cnt/total*100):0;
+    return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:3px"><span>${TYPE_ICONS[t]} ${TYPE_LABELS[t]}</span><span style="font-family:'IBM Plex Mono',monospace;color:var(--muted)">${cnt}</span></div><div style="height:6px;background:var(--surf2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${TYPE_COLORS[t]};border-radius:3px;transition:width .6s ease"></div></div></div>`;
+  }).join('');
+  // Sync card
+  const syncEl=document.getElementById('sync-detail');
+  const gasUrl=cfg.gasUrl||DEFAULT_GAS_URL;
+  if(syncEl&&gasUrl) syncEl.innerHTML=`<span style="color:var(--green)">● Drive activo</span>  -  Los nuevos trámites se guardan automáticamente en Drive y en la hoja de seguimiento CITRO.`;
+  else if(syncEl) syncEl.innerHTML='<span style="color:var(--muted)">☁ Configure el URL del servidor en <strong>Configuración</strong> para activar Drive.</span>';
+}
+
+function updateAllCounters() {
+  document.getElementById('nb-total').textContent=data.length;
+  ['pg','sc','pr','oe'].forEach(t=>{ document.getElementById('nb-'+t).textContent=data.filter(r=>r.type===t).length; });
+  document.getElementById('sb-count').textContent=`${data.length} trámite${data.length!==1?'s':''} local${data.length!==1?'es':''}`;
+  renderDashboard();
+}
+
+// ============================================================
+//  CONFIG
+// ============================================================
+async function saveConfig() {
+  const gasUrl=(document.getElementById('cfg-gas-url')||{}).value||'';
+  const secret=(document.getElementById('cfg-secret')||{}).value||'';
+  cfg.gasUrl=gasUrl; cfg.secret=secret;
+  saveCfg(cfg);
+  const testEl=document.getElementById('conn-test-result');
+  testEl.innerHTML='<div class="sync-dot pending"></div> Probando...';
+  if(gasUrl) {
+    try {
+      const email=currentUser?currentUser.email:'test@uv.mx';
+      const r=await fetch(`${gasUrl}?action=stats&email=${encodeURIComponent(email)}&secret=${encodeURIComponent(secret)}`);
+      const j=await r.json();
+      if(j.ok||j.error==='No autorizado') { testEl.innerHTML='<div class="sync-dot ok"></div> <span style="color:var(--green)">Conexión exitosa OK</span>'; isOnline=true; }
+      else testEl.innerHTML=`<div class="sync-dot error"></div> <span style="color:var(--red)">Error: ${j.error}</span>`;
+    } catch(e){ testEl.innerHTML=`<div class="sync-dot error"></div> <span style="color:var(--red)">Sin conexión: ${e.message}</span>`; }
+  } else { testEl.innerHTML='<span style="color:var(--muted)">Sin URL configurado</span>'; }
+}
+
+function saveInstitConfig() {
+  cfg.inst=(document.getElementById('cfg-inst')||{}).value||'';
+  cfg.uni=(document.getElementById('cfg-uni')||{}).value||'';
+  cfg.director=(document.getElementById('cfg-director')||{}).value||'';
+  cfg.mail=(document.getElementById('cfg-mail')||{}).value||'';
+  saveCfg(cfg);
+  alert('Configuración institucional guardada.');
+}
+
+function renderConfigStats() {
+  const today_str=new Date().toISOString().split('T')[0];
+  document.getElementById('config-stats').innerHTML=`Total: <strong>${data.length}</strong> &nbsp;|&nbsp; PG: <strong>${data.filter(r=>r.type==='pg').length}</strong> &nbsp;|&nbsp; SC: <strong>${data.filter(r=>r.type==='sc').length}</strong> &nbsp;|&nbsp; PR: <strong>${data.filter(r=>r.type==='pr').length}</strong> &nbsp;|&nbsp; OE: <strong>${data.filter(r=>r.type==='oe').length}</strong><br>Pendientes: <strong>${data.filter(r=>r.estado==='Pendiente').length}</strong> &nbsp;|&nbsp; Completados: <strong>${data.filter(r=>r.estado==='Completado').length}</strong><br>Hoy: <strong>${data.filter(r=>r.fecha.startsWith(today_str)).length}</strong> nuevos &nbsp;|&nbsp; Folios: PG:${folios.PG}  -  SC:${folios.SC}  -  PR:${folios.PR}  -  OE:${folios.OE}<br>Drive: <strong>${data.filter(r=>r.driveUrl).length}</strong> sincronizados`;
+  if(cfg.gasUrl) document.getElementById('cfg-gas-url').value=cfg.gasUrl;
+  if(cfg.secret) document.getElementById('cfg-secret').value=cfg.secret;
+  if(cfg.inst)   document.getElementById('cfg-inst').value=cfg.inst;
+  if(cfg.uni)    document.getElementById('cfg-uni').value=cfg.uni;
+  if(cfg.director) document.getElementById('cfg-director').value=cfg.director;
+  if(cfg.mail)   document.getElementById('cfg-mail').value=cfg.mail;
+}
+
+// ============================================================
+//  EXPORT / IMPORT
+// ============================================================
+function exportCSV() {
+  if(!data.length){ alert('Sin datos'); return; }
+  const rows=[['Folio','Tipo','Apellidos','Nombres','Matrícula','Correo','Fecha','Estado','Drive']];
+  data.forEach(r=>rows.push([r.folio,r.label,r.apellidos,r.nombres,r.matricula,r.correo,r.fecha.split('T')[0],r.estado,r.driveUrl||'']));
+  const csv=rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`CITRO_tramites_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+function exportJSON() {
+  const blob=new Blob([JSON.stringify({tramites:data,folios},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`CITRO_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+}
+
+function clearAll() {
+  if(!confirm('¿Borrar TODOS los datos locales? (Los datos en Drive/Sheets no se borrarán)')) return;
+  data=[];folios={PG:0,SC:0,PR:0,OE:0};
+  saveData(data);saveFolios(folios);
+  updateAllCounters();
+  alert('Datos locales borrados.');
+}
+
+// ============================================================
+//  PRINT
+// ============================================================
+function printForm(type) {
+  var r=buildRecord(type,'BORRADOR');
+  r.type=type;
+  printFormFromRecord(r);
+}
+
+function printFormFromRecord(r){descargarCartaPDF(r,r.type);}
+
+function toggleUserMenu() {}
+
+// MÓVIL - MENÚ TOGGLE
+function toggleMobileMenu(){
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('mobile-open');
+}
+
+function detectDevice(){
+  const isMobile = window.innerWidth <= 768;
+  const btn = document.getElementById('mobile-menu-btn');
+  if(btn) btn.style.display = isMobile ? 'block' : 'none';
+  
+  // Cerrar menú al cambiar de tamaño
+  const sidebar = document.querySelector('.sidebar');
+  if(!isMobile && sidebar.classList.contains('mobile-open')){
+    sidebar.classList.remove('mobile-open');
+  }
+}
+
+window.addEventListener('resize', detectDevice);
+window.addEventListener('DOMContentLoaded', detectDevice);
+
+// ============================================================
+//  INIT
+// ============================================================
+function init() {
+  const today=new Date().toISOString().split('T')[0];
+  ['pg-fecha','sc-fecha-salida','sc-fecha-regreso','pr-fecha','oe-fecha'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=today;});
+  document.querySelectorAll('input,select,textarea').forEach(el=>{el.addEventListener('input',()=>el.classList.remove('err'));el.addEventListener('change',()=>el.classList.remove('err'));});
+  updateAllCounters();
+  renderConfigStats();
+  // Load config into inputs
+  if(cfg.gasUrl) { const el=document.getElementById('cfg-gas-url'); if(el) el.value=cfg.gasUrl; }
+  if(cfg.secret) { const el=document.getElementById('cfg-secret'); if(el) el.value=cfg.secret; }
+  // Init Google Sign-In
+  initGoogleSignIn();
+}
+var TEMA_KEY='citro_tema_v1';
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme',t);
+  localStorage.setItem(TEMA_KEY,t);
+  cfg.tema=t;saveCfg(cfg);
+  ['oceano','bosque','uv'].forEach(function(n){
+    var card=document.getElementById('tema-'+n);
+    var chk=document.getElementById('chk-'+n);
+    if(card)card.classList.toggle('activo',n===t);
+    if(chk)chk.innerHTML=n===t?'&#10003;':'';
+  });
+}
+function cargarTema(){aplicarTema(localStorage.getItem(TEMA_KEY)||cfg.tema||'oceano');}
+
+function buildPrintHTML(record,type){
+  var r=record||{};
+  var today=new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  var colors={pg:'#5B2F8A',sc:'#1A7A4A',pr:'#B85C0A',oe:'#1B5FA8'};
+  var color=colors[type]||'#0A7A6E';
+  var body='';
+  if(type==='pg')body='<p><strong>Tipo:</strong> '+(r.tipo||'')+'</p><p><strong>Urgencia:</strong> '+(r.urgencia||'Normal')+'</p><p><strong>Descripcion:</strong></p><p>'+(r.descripcion||'')+'</p>'+(r.obs?'<p><strong>Obs:</strong> '+r.obs+'</p>':'');
+  else if(type==='sc')body='<p><strong>Lugar(es):</strong></p><p>'+(r.lugares||'')+'</p><p><strong>Actividades:</strong></p><p>'+(r.actividades||'')+'</p><p><strong>Salida:</strong> '+(r.fecha_salida||'')+'  <strong>Regreso:</strong> '+(r.fecha_regreso||'')+'</p>';
+  else if(type==='pr')body='<p><strong>Actividad:</strong> '+(r.actividad||'')+'</p><p><strong>Recurso:</strong> '+(r.tipo_recurso||'')+'</p>'+(r.monto?'<p><strong>Monto:</strong> $'+parseFloat(r.monto||0).toFixed(2)+' MXN</p>':'')+'<p><strong>Justificacion:</strong></p><p>'+(r.justificacion||'')+'</p>';
+  else if(type==='oe')body='<p><strong>Evento:</strong> '+(r.nombre_evento||'')+'</p><p><strong>Fecha:</strong> '+(r.fecha_evento||'')+'  <strong>Sede:</strong> '+(r.sede||'')+'</p><p><strong>Presupuesto:</strong> $'+parseFloat(r.presupuesto||0).toFixed(2)+' MXN</p><p><strong>Asistentes:</strong> '+(r.asistentes||'')+'</p><p><strong>LGAC:</strong></p><p>'+(r.lgac||'')+'</p>';
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>CITRO-'+r.folio+'</title>'
+    +'<style>body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.65;margin:2cm;color:#111}p{margin-bottom:8px}.hdr{text-align:center;border-bottom:2px solid #0D1F3C;padding-bottom:12px;margin-bottom:18px}.fol{font-family:monospace;background:#f2f5fa;padding:4px 10px;border-radius:4px;color:'+color+'}.firma{margin-top:52px;display:grid;grid-template-columns:1fr 1fr;gap:32px}.fl{text-align:center;border-top:1px solid #333;padding-top:6px;font-size:9pt;color:#555}@media print{body{margin:1.5cm}}</style></head><body>'
+    +'<div class="hdr"><div style="font-size:9pt;text-transform:uppercase;letter-spacing:.08em;color:#5A6880">Centro de Investigaciones Tropicales</div><div style="font-size:15pt;font-weight:bold;color:#0D1F3C">UNIVERSIDAD VERACRUZANA</div><div style="font-size:9pt;color:#5A6880">Xalapa, Veracruz - '+today+'</div></div>'
+    +'<div style="text-align:right;margin-bottom:14px"><span class="fol">Folio: '+r.folio+'</span></div>'
+    +'<p><strong>Asunto:</strong> '+(r.label||r.tipo||'Solicitud')+'</p><p>A quien corresponda:</p>'
+    +'<p>Yo, <strong>'+(r.grado?r.grado+' ':'')+r.apellidos+', '+r.nombres+'</strong>, matricula <strong>'+(r.matricula||'')+'</strong>'+(r.programa?', programa <strong>'+r.programa+'</strong>':'')+', solicito respetuosamente:</p>'
+    +body
+    +'<p style="margin-top:16px">Atentamente,<br><strong>'+(r.apellidos||'')+', '+(r.nombres||'')+'</strong></p>'
+    +'<div class="firma"><div class="fl">Firma del solicitante<br><span style="color:#888">'+(r.apellidos||'')+', '+(r.nombres||'')+'</span></div><div class="fl">Vo.Bo. Direccion CITRO</div></div>'
+    +'<div style="margin-top:16px;text-align:center;font-size:8pt;color:#aaa;border-top:1px solid #eee;padding-top:8px">CITRO v5 - Folio '+(r.folio||'')+'</div></body></html>';
+}
+function descargarCartaPDF(record,type){
+  var folio=(record&&record.folio)?record.folio:'CITRO';
+  var w=window.open('','_blank','width=794,height=1100');
+  if(!w){alert('Permite ventanas emergentes.');return;}
+  w.document.write(buildPrintHTML(record,type));w.document.close();
+  setTimeout(function(){if(typeof html2pdf!=='undefined'){html2pdf().set({margin:[15,18,15,18],filename:folio+'_carta_CITRO.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(w.document.body).save().then(function(){w.close();});}else{w.print();}},400);
+}
+function acuseDescargarCarta(){
+  if(!_lastAcuseRecord)r
