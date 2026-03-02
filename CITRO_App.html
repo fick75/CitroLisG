@@ -2318,4 +2318,28 @@ function descargarCartaPDF(record,type){
   setTimeout(function(){if(typeof html2pdf!=='undefined'){html2pdf().set({margin:[15,18,15,18],filename:folio+'_carta_CITRO.pdf',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(w.document.body).save().then(function(){w.close();});}else{w.print();}},400);
 }
 function acuseDescargarCarta(){
-  if(!_lastAcuseRecord)r
+  if(!_lastAcuseRecord){
+    alert('No hay datos de acuse para descargar');
+    return;
+  }
+  const record=_lastAcuseRecord;
+  const folio=record.folio||'CITRO';
+  const type=record.type||record.tipo||'pg';
+  descargarCartaPDF(record,type);
+}
+
+// Inicializar aplicación
+window.addEventListener('DOMContentLoaded',init);
+document.addEventListener('DOMContentLoaded',cargarTema);
+
+// Prevenir cierre accidental
+window.addEventListener('beforeunload',function(e){
+  if(Object.keys(_registros).length>0&&!cfg.syncUrl){
+    e.preventDefault();
+    e.returnValue='Tienes datos sin sincronizar. ¿Estás seguro?';
+    return'Tienes datos sin sincronizar. ¿Estás seguro?';
+  }
+});
+</script>
+</body>
+</html>
